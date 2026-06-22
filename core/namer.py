@@ -89,7 +89,12 @@ def build_new_filename(
     version_str: str,
     date_str: str,
 ) -> str:
-    """构建新文件名: 内容摘要_日期_作者_版本.扩展名"""
+    """
+    构建新文件名
+
+    首次处理:  内容摘要_日期[_作者]
+    有修改后:  内容摘要_日期[_作者]_v1.0
+    """
     ext = Path(old_name).suffix
     summary = generate_summary(extracted)
 
@@ -101,9 +106,12 @@ def build_new_filename(
     # 作者标签
     author_tag = _get_author_tag(old_name, extracted, ext)
 
+    # 拼接文件名（版本号只在有修改时加入）
+    parts = [summary, date_str]
     if author_tag:
-        new_stem = f"{summary}_{date_str}_{author_tag}_{version_str}"
-    else:
-        new_stem = f"{summary}_{date_str}_{version_str}"
+        parts.append(author_tag)
+    if version_str:
+        parts.append(version_str)
 
+    new_stem = "_".join(parts)
     return f"{new_stem}{ext}"

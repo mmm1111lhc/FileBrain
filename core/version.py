@@ -60,11 +60,14 @@ class VersionManager:
         """
         根据文件路径和修改时间，计算版本号
 
-        返回格式: "v1.0"
+        首次遇到返回空字符串（不加版本号），
+        文件修改后才开始标 v1.0、v1.1...
+
+        返回格式: "" | "v1.0" | "v1.1"
         """
         path = Path(file_path)
         if not path.exists():
-            return "v1.0"
+            return ""
 
         mtime = path.stat().st_mtime
         mtime_dt = datetime.fromtimestamp(mtime)
@@ -74,48 +77,57 @@ class VersionManager:
         record = self._state.get(abs_path)
 
         if record is None:
-            # 首次遇到
-            major = 1
-            minor = 0
+            # 首次遇到 —— 记录状态但不标版本号
             self._state[abs_path] = {
-                "major": major,
-                "minor": minor,
+                "major": 0,
+                "minor": 0,
+                "version_count": 0,      # 记录修改次数
                 "last_mtime": mtime,
                 "last_date": date_key,
             }
             self._save_state()
-            return f"v{major}.{minor}"
+            return ""
 
         last_mtime = record.get("last_mtime", 0)
         last_date = record.get("last_date", date_key)
-        major = record.get("major", 1)
-        minor = record.get("minor", 0)
+        version_count = record.get("version_count", 0)
 
         # 判断是否修改
         if abs(mtime - last_mtime) < 1:
-            # 时间没变，保持原版本
+            # 时间没变
+            if version_count == 0:
+                return ""
+            major = record.get("major", 0)
+            minor = record.get("minor", 0)
             return f"v{major}.{minor}"
 
-        time_diff_minutes = (mtime - last_mtime) / 60
+        # 文件有修改，开始计算版本号
+        version_count += 1
+        time_diff_minutes = abs(mtime - last_mtime) / 60
 
         if date_key != last_date:
-            # 跨天 → 升大版本
-            major += 1
+            # 跨天 → 大版本+1
+            major = (version_count + 1) // 2
             minor = 0
         elif time_diff_minutes > VERSION_INCREMENT_MINUTES:
-            # 超过间隔 → 升次版本
-            minor += 1
+            # 超过间隔 → 次版本+1
+            major = (version_count + 1) // 2
+            minor = (version_count - 1) % 2
         else:
-            # 短时间内多次修改 → 升次版本
-            minor += 1
+            # 短时间内多次修改 → 次版本
+            major = (version_count + 1) // 2
+            minor = (version_count - 1) % 2
 
         # 更新记录
         self._state[abs_path] = {
             "major": major,
             "minor": minor,
+            "version_count": version_count,
             "last_mtime": mtime,
             "last_date": date_key,
         }
+        self._save_state()
+        return f"v{major}.{minor}"
         self._save_state()
         return f"v{major}.{minor}"
 
