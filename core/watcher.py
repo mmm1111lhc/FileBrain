@@ -18,6 +18,7 @@ from core.extractors import EXTRACTORS
 from core.namer import build_new_filename
 from core.version import VersionManager
 from core.search_index import SearchIndex
+from core.pending import PendingQueue
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,16 @@ class FileBrainHandler(FileSystemEventHandler):
     def __init__(self, watch_dir: str,
                  version_mgr: VersionManager,
                  search_index: SearchIndex,
-                 on_processed=None):
+                 pending_queue: PendingQueue = None,
+                 on_processed=None,
+                 auto_mode: bool = True):
         self.watch_dir = Path(watch_dir)
         self.version_mgr = version_mgr
         self.search_index = search_index
+        self.pending_queue = pending_queue or PendingQueue()
         self.on_processed = on_processed  # 回调函数
-        self._pending = set()             # 去重
+        self.auto_mode = auto_mode        # True=自动处理, False=用户确认
+        self._dedup = set()               # 去重
         self._observer = None
 
     def on_created(self, event):
@@ -59,39 +64,75 @@ class FileBrainHandler(FileSystemEventHandler):
             return
 
         # 去重
-        if file_path in self._pending:
+        if file_path in self._dedup:
             return
-        self._pending.add(file_path)
+        self._dedup.add(file_path)
 
         try:
             # 等待文件写入完成
             time.sleep(FILE_WRITE_WAIT_SECONDS)
-            self._process_file(file_path)
+            if not path.exists():
+                return
+            self._process_or_queue(file_path)
         finally:
-            self._pending.discard(file_path)
+            self._dedup.discard(file_path)
 
-    def _process_file(self, file_path: str):
-        """处理单个文件：提取 → 命名 → 版本 → 重命名 → 索引"""
+    def _process_or_queue(self, file_path: str):
+        """提取内容，然后根据模式决定是自动处理还是加入待处理队列"""
+        path = Path(file_path)
+        ext = path.suffix.lower()
+
+        extractor_cls = EXTRACTORS.get(ext)
+        if not extractor_cls:
+            return
+
+        extractor = extractor_cls()
+        extracted = extractor.extract(file_path)
+
+        if not extracted.get("success"):
+            logger.warning(f"内容提取失败: {path.name}")
+            return
+
+        if self.auto_mode:
+            # 自动模式：直接处理
+            self._process_file(file_path, extracted)
+        else:
+            # 交互模式：加入待处理队列
+            self.pending_queue.add(file_path, extracted)
+            logger.info(f"已加入待处理: {path.name}")
+            if self.on_processed:
+                self.on_processed("待处理", path.name, "", "", "")
+            else:
+                # 没有 GUI 回调时，打印提示
+                print(f"\n📋 待处理: {path.name}")
+
+    def _process_file(self, file_path: str, extracted: dict = None,
+                      user_version: str = ""):
+        """处理单个文件：命名 → 版本 → 重命名 → 索引
+
+        Args:
+            file_path: 文件路径
+            extracted: 已提取的内容（如果为 None 则重新提取）
+            user_version: 用户手动指定的版本标签（如 "v1", "v2"）
+        """
         path = Path(file_path)
         ext = path.suffix.lower()
 
         if not path.exists():
             return
 
-        logger.info(f"检测到文件: {path.name}")
+        logger.info(f"处理文件: {path.name}")
 
-        # 1. 获取合适的提取器
-        extractor_cls = EXTRACTORS.get(ext)
-        if not extractor_cls:
-            return
-
-        # 提取之前重命名，记录旧文件名
         old_full_path = str(path.absolute())
         old_name = path.name
 
-        # 2. 提取内容
-        extractor = extractor_cls()
-        extracted = extractor.extract(file_path)
+        # 提取内容（如未提供）
+        if extracted is None:
+            extractor_cls = EXTRACTORS.get(ext)
+            if not extractor_cls:
+                return
+            extractor = extractor_cls()
+            extracted = extractor.extract(file_path)
 
         if not extracted.get("success"):
             logger.warning(f"内容提取失败: {old_name} - "
@@ -100,8 +141,11 @@ class FileBrainHandler(FileSystemEventHandler):
                 self.on_processed("提取失败", old_name, "", "", "")
             return
 
-        # 3. 获取版本号
-        version_str = self.version_mgr.get_version(file_path)
+        # 获取版本号（用户指定优先）
+        if user_version:
+            version_str = user_version
+        else:
+            version_str = self.version_mgr.get_version(file_path)
 
         # 4. 获取日期
         mtime = path.stat().st_mtime
@@ -112,31 +156,40 @@ class FileBrainHandler(FileSystemEventHandler):
         new_name = build_new_filename(old_name, extracted,
                                       version_str, date_str)
 
-        # 如果新旧文件名一样则跳过
-        if new_name == old_name:
-            logger.info(f"文件名无需变更: {old_name}")
+        # 6. 归类到子文件夹
+        category_dir = self._get_category_dir(ext)
+        target_dir = path.parent / category_dir if category_dir else path.parent
+        target_dir.mkdir(exist_ok=True)
+
+        # 如果文件名不变且已在正确文件夹，跳过
+        already_categorized = (
+            new_name == old_name
+            and path.parent == target_dir
+        )
+        if already_categorized:
+            final_name = new_name
+            final_path = str(path.absolute())
         else:
-            # 6. 执行重命名
-            new_path = path.parent / new_name
+            new_path = target_dir / new_name
             try:
                 # 如果目标文件已存在，加时间戳避免覆盖
                 if new_path.exists():
                     stem = Path(new_name).stem
                     ts = time.strftime("%H%M%S")
                     new_name = f"{stem}_{ts}{ext}"
-                    new_path = path.parent / new_name
+                    new_path = target_dir / new_name
 
                 path.rename(new_path)
-                logger.info(f"重命名: {old_name} → {new_name}")
+                location = f"{category_dir}/" if category_dir else ""
+                logger.info(f"→ {location}{new_name}")
             except Exception as e:
-                logger.error(f"重命名失败: {e}")
+                logger.error(f"处理失败: {e}")
                 if self.on_processed:
-                    self.on_processed("重命名失败", old_name,
+                    self.on_processed("处理失败", old_name,
                                       new_name, version_str, date_str)
                 return
-
-        final_name = new_name
-        final_path = str((path.parent / final_name).absolute())
+            final_name = new_name
+            final_path = str(new_path.absolute())
 
         # 7. 加入搜索索引（用最终的文件名）
         self.search_index.add(
@@ -147,6 +200,42 @@ class FileBrainHandler(FileSystemEventHandler):
         if self.on_processed:
             self.on_processed("已完成", old_name, final_name,
                               version_str, date_str)
+
+    def process_pending_file(self, file_path: str,
+                              version_label: str = ""):
+        """处理一个待队列中的文件"""
+        pending = self.pending_queue.approve(file_path, version_label)
+        if not pending:
+            logger.warning(f"待处理文件不存在: {file_path}")
+            return False
+
+        self._process_file(file_path, pending.extracted,
+                           user_version=version_label)
+        self.pending_queue.remove_processed(file_path)
+        return True
+
+    def process_all_pending(self, version_label: str = ""):
+        """处理所有待处理文件"""
+        pending_items = self.pending_queue.get_pending()
+        for item in pending_items:
+            self.process_pending_file(item.file_path, version_label)
+
+    def _get_category_dir(self, ext: str) -> str:
+        """根据文件扩展名返回归类文件夹名称"""
+        pdf_exts = {".pdf"}
+        word_exts = {".doc", ".docx"}
+        excel_exts = {".xls", ".xlsx"}
+        image_exts = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif"}
+
+        if ext in pdf_exts:
+            return "📄 PDF"
+        elif ext in word_exts:
+            return "📝 Word"
+        elif ext in excel_exts:
+            return "📊 Excel"
+        elif ext in image_exts:
+            return "🖼️ 图片"
+        return ""
 
     def scan_existing(self):
         """扫描目录中已有的文件"""
