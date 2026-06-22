@@ -80,7 +80,7 @@ class FileBrainApp:
         e.grid(row=0, column=1, sticky="ew", padx=4, pady=8)
         ctk.CTkButton(p, text="选择",
                       command=self._select_dir,
-                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=32, width=60, corner_radius=6
                       ).grid(row=0, column=2, padx=(4, 12), pady=8)
 
@@ -88,16 +88,16 @@ class FileBrainApp:
         b = ctk.CTkFrame(f, fg_color="transparent")
         b.grid(row=3, column=0, sticky="ew", pady=4)
         b.grid_columnconfigure(2, weight=1)
-        self.btn_start = ctk.CTkButton(b, text="▶ 开始整理",
+        self.btn_start = ctk.CTkButton(b, text="▶ 开始整理", text_color='white',
                                        font=("", 14, "bold"),
                                        height=38, width=140,
                                        command=self._toggle_monitor,
-                                       fg_color=COLOR_SUCCESS,
+                                       fg_color="#2c2c2c",
                                        hover_color="#4a7a4a", corner_radius=8)
         self.btn_start.grid(row=0, column=0, sticky="w")
         ctk.CTkButton(b, text="🔄 扫描现有文件",
                       command=self._scan_existing,
-                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=38, width=120, corner_radius=8
                       ).grid(row=0, column=1, padx=(8, 0))
         self.status_label = ctk.CTkLabel(b, text="⏸ 未开始",
@@ -149,7 +149,7 @@ class FileBrainApp:
         self.se.bind("<Return>", lambda e: self._do_search())
         ctk.CTkButton(bar, text="搜索",
                       command=self._do_search,
-                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=34, width=80, corner_radius=6
                       ).grid(row=0, column=2, padx=(4, 12), pady=8)
 
@@ -169,12 +169,12 @@ class FileBrainApp:
         ab.grid_columnconfigure(2, weight=1)
         ctk.CTkButton(ab, text="📂 打开文件位置",
                       command=self._open_file,
-                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=34, corner_radius=6
                       ).grid(row=0, column=0, sticky="w")
         ctk.CTkButton(ab, text="📤 记录发送",
                       command=self._send_dialog,
-                      fg_color=COLOR_SUCCESS, hover_color="#4a7a4a",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=34, corner_radius=6
                       ).grid(row=0, column=1, padx=(6, 0))
         self.sp = ctk.CTkLabel(ab, text="", font=("", 11), text_color=COLOR_MUTED)
@@ -198,7 +198,7 @@ class FileBrainApp:
         self.je.bind("<Return>", lambda e: self._j_search())
         ctk.CTkButton(bar, text="搜索",
                       command=self._j_search,
-                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=34, width=80, corner_radius=6
                       ).grid(row=0, column=2, padx=(4, 12), pady=8)
 
@@ -214,7 +214,7 @@ class FileBrainApp:
         ab.grid(row=3, column=0, sticky="ew", pady=4)
         ctk.CTkButton(ab, text="🔄 刷新",
                       command=self._j_refresh,
-                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=34, corner_radius=6
                       ).grid(row=0, column=0, sticky="w")
 
@@ -277,7 +277,7 @@ class FileBrainApp:
         if self.watcher and self.watcher.is_running():
             threading.Thread(target=self.watcher.stop, daemon=True).start()
             self.watcher = None
-            self.btn_start.configure(text="▶ 开始整理", fg_color=COLOR_SUCCESS)
+            self.btn_start.configure(text="▶ 开始整理", text_color='white', fg_color=COLOR_SUCCESS)
             self.status_label.configure(text="⏸ 已暂停")
             self._log("自动整理已停止")
         else:
@@ -294,7 +294,7 @@ class FileBrainApp:
         self.root.after(0, self._started)
 
     def _started(self):
-        self.btn_start.configure(text="⏹ 停止整理", fg_color=COLOR_ERROR)
+        self.btn_start.configure(text="⏹ 停止整理", fg_color="#b85450")
         self.status_label.configure(text="🟢 整理中")
 
     def _on_proc(self, status, old, new, ver, date):
@@ -432,11 +432,11 @@ class SendDialog:
         bf = ctk.CTkFrame(self.top, fg_color="transparent")
         bf.pack(padx=16, pady=(14, 12), fill="x")
         ctk.CTkButton(bf, text="取消", command=self.top.destroy,
-                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=34, corner_radius=6
                       ).pack(side="left")
         ctk.CTkButton(bf, text="✅ 保存", command=self._save,
-                      fg_color=COLOR_SUCCESS, hover_color="#4a7a4a",
+                      fg_color="#2c2c2c", hover_color="#000000",
                       height=34, corner_radius=6
                       ).pack(side="right")
 
