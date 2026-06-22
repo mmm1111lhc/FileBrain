@@ -158,6 +158,12 @@ def make_workflow_image():
         ['<span class="arrow">➜</span>' for _ in range(len(steps)-1)]
     ) + "</div>"
 
+    # 隐私标注
+    privacy_note = """
+    <div style="background:#e8f5e8;border-radius:8px;padding:10px;margin-bottom:16px;text-align:center;">
+        <span style="font-size:14px;font-weight:bold;color:#5a8f5a;">🔒 全程本地处理，数据不过云，文件留在你的磁盘里</span>
+    </div>"""
+
     naming_demo = """
     <div class="naming-demo">
         <h3 style="margin-bottom:12px;color:#c97a3a;">📄 文件重命名效果</h3>
@@ -178,7 +184,7 @@ def make_workflow_image():
     return HTML_TEMPLATE.format(
         title="🧠 FileBrain · 文件大脑",
         subtitle="桌面文件智能整理工具 — 工作流程",
-        content=BOX_STYLE + step_html + arrows + naming_demo
+        content=BOX_STYLE + step_html + arrows + privacy_note + naming_demo
     )
 
 
@@ -235,6 +241,16 @@ def make_features_image():
         </div>"""
     grid += "</div>"
 
+    # 隐私安全横幅
+    privacy_banner = """
+    <div style="background:#fff;border:2px solid #5a8f5a;border-radius:10px;padding:14px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:18px;font-weight:bold;color:#5a8f5a;">🔒 纯本地 · 不过云</div>
+        <div style="font-size:13px;color:#666;margin-top:4px;">
+            所有文件处理在本地电脑完成，数据不上传任何云端服务器<br>
+            政务文件、商业合同、个人隐私，全部留在你的磁盘里
+        </div>
+    </div>"""
+
     # 使用场景
     scenarios = """
     <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
@@ -266,7 +282,7 @@ def make_features_image():
     return HTML_TEMPLATE.format(
         title="🧠 FileBrain · 文件大脑",
         subtitle="8 大核心功能 · 4 大使用场景",
-        content=BOX_STYLE + grid + scenarios
+        content=BOX_STYLE + privacy_banner + grid + scenarios
     )
 
 
