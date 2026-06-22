@@ -253,7 +253,7 @@ class FileBrainApp:
         log_frame = Frame(frame, bg=COLORS["card_bg"])
         log_frame.grid(row=3, column=0, sticky="nsew",
                        padx=12, pady=(0, 12))
-        log_frame.grid_row_columnconfigure(0, weight=1)
+        log_frame.grid_rowconfigure(0, weight=1)
         log_frame.grid_columnconfigure(0, weight=1)
 
         self.log_text = Text(log_frame,
@@ -321,7 +321,7 @@ class FileBrainApp:
         result_frame = Frame(frame, bg=COLORS["card_bg"])
         result_frame.grid(row=2, column=0, sticky="nsew",
                           padx=12, pady=(0, 12))
-        result_frame.grid_row_columnconfigure(0, weight=1)
+        result_frame.grid_rowconfigure(0, weight=1)
         result_frame.grid_columnconfigure(0, weight=1)
 
         # 结果列表（Treeview）
@@ -423,7 +423,7 @@ class FileBrainApp:
         jlist_frame = Frame(frame, bg=COLORS["card_bg"])
         jlist_frame.grid(row=2, column=0, sticky="nsew",
                          padx=12, pady=(0, 12))
-        jlist_frame.grid_row_columnconfigure(0, weight=1)
+        jlist_frame.grid_rowconfigure(0, weight=1)
         jlist_frame.grid_columnconfigure(0, weight=1)
 
         jcolumns = ("time", "file", "recipient", "method", "notes")
