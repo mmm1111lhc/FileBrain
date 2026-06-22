@@ -1,0 +1,105 @@
+"""发送留痕 —— 记录文件的发送历史：发给谁、什么时间、通过什么方式"""
+
+import json
+import time
+import logging
+from pathlib import Path
+
+from config import STATE_DIR_NAME
+
+logger = logging.getLogger(__name__)
+
+JOURNAL_FILE = "send_journal.json"
+
+
+class SendJournal:
+    """文件发送留痕记录"""
+
+    METHODS = ["微信 WeChat", "邮件 Email", "AirDrop", "钉钉 DingTalk",
+               "企业微信 WeCom", "飞书 Feishu", "USB 拷贝", "其他"]
+
+    def __init__(self, watch_dir: str):
+        self.watch_dir = Path(watch_dir)
+        self.state_dir = self.watch_dir / STATE_DIR_NAME
+        self.journal_file = self.state_dir / JOURNAL_FILE
+        self._records: list[dict] = []
+        self._load()
+
+    def _ensure_dir(self):
+        self.state_dir.mkdir(parents=True, exist_ok=True)
+
+    def _load(self):
+        if self.journal_file.exists():
+            try:
+                with open(self.journal_file, "r", encoding="utf-8") as f:
+                    self._records = json.load(f)
+            except Exception as e:
+                logger.warning(f"读取发送记录失败: {e}")
+                self._records = []
+        else:
+            self._records = []
+
+    def _save(self):
+        self._ensure_dir()
+        try:
+            with open(self.journal_file, "w", encoding="utf-8") as f:
+                json.dump(self._records, f,
+                          ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"保存发送记录失败: {e}")
+
+    def add_record(self, file_path: str, file_name: str,
+                   recipient: str, method: str,
+                   notes: str = "") -> dict:
+        """添加一条发送记录"""
+        record = {
+            "id": int(time.time() * 1000),  # 毫秒时间戳作 ID
+            "file_path": str(Path(file_path).absolute()),
+            "file_name": file_name,
+            "recipient": recipient.strip(),
+            "method": method,
+            "notes": notes.strip(),
+            "sent_at": time.time(),
+            "sent_at_str": time.strftime("%Y-%m-%d %H:%M"),
+        }
+        self._records.insert(0, record)  # 最新的在前
+        self._save()
+        return record
+
+    def delete_record(self, record_id: int) -> bool:
+        """删除一条发送记录"""
+        count = len(self._records)
+        self._records = [r for r in self._records
+                         if r.get("id") != record_id]
+        if len(self._records) < count:
+            self._save()
+            return True
+        return False
+
+    def get_records_for_file(self, file_path: str) -> list[dict]:
+        """获取某个文件的所有发送记录"""
+        abs_path = str(Path(file_path).absolute())
+        return [r for r in self._records
+                if r.get("file_path") == abs_path]
+
+    def search(self, query: str) -> list[dict]:
+        """搜索发送记录（按接收人、文件名、备注）"""
+        if not query.strip():
+            return []
+        q = query.lower()
+        results = []
+        for r in self._records:
+            if (q in r.get("recipient", "").lower()
+                or q in r.get("file_name", "").lower()
+                or q in r.get("notes", "").lower()
+                or q in r.get("method", "").lower()):
+                results.append(r)
+        return results
+
+    def get_recent(self, limit: int = 50) -> list[dict]:
+        """获取最近的发送记录"""
+        return self._records[:limit]
+
+    def get_all_files_sent(self) -> set:
+        """获取所有有发送记录的文件路径"""
+        return {r.get("file_path") for r in self._records}
