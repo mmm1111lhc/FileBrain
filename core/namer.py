@@ -22,6 +22,13 @@ SEP = " · "
 
 def sanitize_filename(text: str, max_len: int = SUMMARY_MAX_LENGTH) -> str:
     """清理文本，保留可读性"""
+    # 修复 OCR 常见问题：中文汉字之间的空格 → 去掉
+    # 如 "赚 钱 如 果" → "赚钱如果"
+    text = re.sub(r"([一-鿿])\s+(?=[一-鿿])", r"\1", text)
+    # 中文与英文之间的空格 → 保留一个空格
+    text = re.sub(r"([一-鿿])\s+([a-zA-Z])", r"\1 \2", text)
+    text = re.sub(r"([a-zA-Z])\s+([一-鿿])", r"\1 \2", text)
+
     safe = re.sub(FILENAME_BAD_CHARS, FILENAME_REPLACE_CHAR, text)
     # 合并连续空白为单个空格
     safe = re.sub(r"\s+", " ", safe)
