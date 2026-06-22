@@ -122,7 +122,7 @@ class FileBrainApp:
         right_frame.grid_columnconfigure(0, weight=1)
 
         self.status_label = Label(right_frame,
-                                  text="⏸ 未启动",
+                                  text="⏸ 未开始",
                                   font=FONTS["body"],
                                   bg=COLORS["accent_light"],
                                   fg=COLORS["accent"],
@@ -159,11 +159,11 @@ class FileBrainApp:
         self._build_journal_tab()
         self._build_settings_tab()
 
-    # ---------- 标签页 1: 文件监控 ----------
+    # ---------- 标签页 1: 自动整理 ----------
 
     def _build_monitor_tab(self):
         frame = Frame(self.notebook, bg=COLORS["card_bg"])
-        self.notebook.add(frame, text="📁 文件监控")
+        self.notebook.add(frame, text="📁 自动整理")
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_rowconfigure(3, weight=1)
 
@@ -173,7 +173,7 @@ class FileBrainApp:
                        padx=12, pady=(12, 4))
         dir_frame.grid_columnconfigure(1, weight=1)
 
-        Label(dir_frame, text="监控目录：",
+        Label(dir_frame, text="管理文件夹：",
               font=FONTS["body"], bg=COLORS["card_bg"]
               ).grid(row=0, column=0, sticky="w")
 
@@ -196,7 +196,7 @@ class FileBrainApp:
                         padx=12, pady=4)
 
         self.btn_start = Button(ctrl_frame,
-                                text="▶ 开始监控",
+                                text="▶ 开始整理",
                                 font=FONTS["body"],
                                 command=self._toggle_monitor,
                                 bg=COLORS["success"],
@@ -205,7 +205,7 @@ class FileBrainApp:
         self.btn_start.grid(row=0, column=0, sticky="w")
 
         Button(ctrl_frame,
-               text="🔄 扫描已有文件",
+               text="🔄 扫描现有文件",
                font=FONTS["body"],
                command=self._scan_existing,
                bg=COLORS["accent"],
@@ -611,11 +611,11 @@ class FileBrainApp:
             threading.Thread(target=self.watcher.stop,
                              daemon=True).start()
             self.watcher = None
-            self.btn_start.config(text="▶ 开始监控",
+            self.btn_start.config(text="▶ 开始整理",
                                   bg=COLORS["success"])
-            self.status_label.config(text="⏸ 已停止",
+            self.status_label.config(text="⏸ 已暂停",
                                      bg=COLORS["accent_light"])
-            self._log("监控已停止")
+            self._log("自动整理已停止")
         else:
             # 启动
             watch_dir = self.watch_dir.get()
@@ -637,9 +637,9 @@ class FileBrainApp:
             self._log(f"正在启动监控: {watch_dir}")
 
     def _on_monitor_started(self):
-        self.btn_start.config(text="⏹ 停止监控",
+        self.btn_start.config(text="⏹ 停止整理",
                               bg=COLORS["error"])
-        self.status_label.config(text="🟢 监控中",
+        self.status_label.config(text="🟢 整理中",
                                  bg=COLORS["success"])
 
     def _on_file_processed(self, status, old_name,
@@ -652,7 +652,7 @@ class FileBrainApp:
         """扫描已有文件"""
         if not self.watcher or not self.watcher.is_running():
             messagebox.showinfo("提示",
-                                "请先点击「开始监控」")
+                                "请先点击「开始整理」")
             return
 
         threading.Thread(
@@ -681,7 +681,7 @@ class FileBrainApp:
             self.result_tree.delete(item)
 
         if not self.watcher:
-            messagebox.showinfo("提示", "请先启动文件监控")
+            messagebox.showinfo("提示", "请先启动自动整理")
             return
 
         results = self.watcher.search_index.search(query)
