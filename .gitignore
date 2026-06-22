@@ -27,3 +27,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# 小红书配图（不公开）
+images/xhs_*.png
+generate_xhs_images.py
