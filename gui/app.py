@@ -52,6 +52,15 @@ class FileBrainApp:
         t4 = self.tab.add("⚙️ 设置")
         self._build_settings(t4)
 
+        
+        # 设置图标
+        try:
+            from PIL import Image, ImageTk
+            img = Image.open("images/app_icon.png")
+            self.root.iconphoto(True, ImageTk.PhotoImage(img))
+        except Exception:
+            pass
+
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     # ═══════════════ 自动整理 ═══════════════
