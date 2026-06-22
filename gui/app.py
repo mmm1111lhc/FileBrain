@@ -1,920 +1,458 @@
-"""FileBrain 图形界面 —— tkinter 桌面应用"""
+"""FileBrain 图形界面 —— CustomTkinter 现代UI"""
 
 import os
+import time
 import threading
 import logging
 from pathlib import Path
-from tkinter import (
-    Tk, ttk, Frame, Label, Button, Entry,
-    Text, Scrollbar, Checkbutton, IntVar,
-    StringVar, BooleanVar, filedialog, messagebox,
-    Toplevel, END, NORMAL, DISABLED, WORD,
-)
-from tkinter.ttk import Combobox
+from tkinter import filedialog, messagebox
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
+import customtkinter as ctk
+
+# ── 主题 ──
+ctk.set_appearance_mode("light")
+ctk.set_default_color_theme("dark-blue")
+
+COLOR_ACCENT = "#c97a3a"
+COLOR_BG = "#f5f2ed"
+COLOR_CARD = "#ffffff"
+COLOR_SUCCESS = "#5a8f5a"
+COLOR_ERROR = "#b85450"
+COLOR_MUTED = "#888888"
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("FileBrain")
-
-# 颜色方案
-COLORS = {
-    "bg": "#f5f2ed",
-    "fg": "#2c2c2c",
-    "accent": "#c97a3a",
-    "accent_light": "#e8d5c0",
-    "success": "#5a8f5a",
-    "warn": "#c97a3a",
-    "error": "#b85450",
-    "card_bg": "#ffffff",
-    "border": "#d4cfc8",
-    "text_secondary": "#888888",
-}
-
-FONTS = {
-    "title": ("PingFang SC", 16, "bold"),
-    "heading": ("PingFang SC", 13, "bold"),
-    "body": ("PingFang SC", 11),
-    "small": ("PingFang SC", 9),
-    "mono": ("Menlo", 10),
-}
 
 
 class FileBrainApp:
-    """FileBrain 主窗口"""
-
     def __init__(self):
-        self.root = Tk()
+        self.root = ctk.CTk()
         self.root.title("FileBrain · 文件大脑")
-        self.root.geometry("820x640")
-        self.root.minsize(700, 520)
-        self.root.configure(bg=COLORS["bg"])
+        self.root.geometry("860x660")
+        self.root.minsize(720, 520)
+        self.root.configure(fg_color=COLOR_BG)
 
-        # 应用图标（可选）
-        try:
-            self.root.iconbitmap(default="")
-        except Exception:
-            pass
-
-        # 核心组件引用（延迟初始化）
         self.watcher = None
-        self.version_mgr = None
-        self.search_index = None
-        self.send_journal = None
-        self.watch_dir = StringVar(value=os.path.expanduser("~/Desktop"))
+        self.watch_dir = ctk.StringVar(value=os.path.expanduser("~/Desktop"))
+        self.selected_file_path = ""
 
-        # 配置变量
-        self.auto_rename = BooleanVar(value=True)
-        self.auto_version = BooleanVar(value=True)
-        self.include_author = BooleanVar(value=True)
-        self.author_name = StringVar(value=os.environ.get("USER", "unknown"))
-        self.monitor_pdf = BooleanVar(value=True)
-        self.monitor_word = BooleanVar(value=True)
-        self.monitor_excel = BooleanVar(value=True)
-        self.monitor_image = BooleanVar(value=True)
+        self.tab = ctk.CTkTabview(self.root, fg_color=COLOR_BG)
+        self.tab.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # 搜索相关
-        self.search_results = []
-        self.selected_file_path = StringVar()
+        t1 = self.tab.add("📁 自动整理")
+        self._build_organize(t1)
 
-        # 构建界面
-        self._build_ui()
+        t2 = self.tab.add("🔍 全文检索")
+        self._build_search(t2)
 
-        # 窗口关闭处理
+        t3 = self.tab.add("📤 发送留痕")
+        self._build_journal(t3)
+
+        t4 = self.tab.add("⚙️ 设置")
+        self._build_settings(t4)
+
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # ==================== UI 构建 ====================
+    # ═══════════════ 自动整理 ═══════════════
 
-    def _build_ui(self):
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_columnconfigure(0, weight=1)
+    def _build_organize(self, f):
+        f.grid_columnconfigure(0, weight=1)
+        f.grid_rowconfigure(5, weight=1)
 
-        main_frame = Frame(self.root, bg=COLORS["bg"])
-        main_frame.grid(row=0, column=0, sticky="nsew", padx=12, pady=8)
-        main_frame.grid_rowconfigure(1, weight=1)
-        main_frame.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(f, text="🧠 FileBrain",
+                     font=("PingFang SC", 22, "bold"),
+                     text_color=COLOR_ACCENT
+                     ).grid(row=0, column=0, sticky="w", pady=(4, 0))
+        ctk.CTkLabel(f, text="文件扔桌面，自动整理好",
+                     font=("", 13), text_color=COLOR_MUTED
+                     ).grid(row=1, column=0, sticky="w", pady=(0, 6))
 
-        # 顶栏
-        self._build_header(main_frame)
+        # 路径
+        p = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=8)
+        p.grid(row=2, column=0, sticky="ew", pady=2)
+        p.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(p, text="📂 管理文件夹",
+                     font=("", 13)).grid(row=0, column=0, padx=(12, 4), pady=8)
+        e = ctk.CTkEntry(p, textvariable=self.watch_dir,
+                         font=("", 13), height=32,
+                         fg_color="#f0ede8", border_width=0)
+        e.grid(row=0, column=1, sticky="ew", padx=4, pady=8)
+        ctk.CTkButton(p, text="选择",
+                      command=self._select_dir,
+                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      height=32, width=60, corner_radius=6
+                      ).grid(row=0, column=2, padx=(4, 12), pady=8)
 
-        # Tab 控制
-        self._build_tabs(main_frame)
-
-    def _build_header(self, parent):
-        header = Frame(parent, bg=COLORS["bg"])
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        header.grid_columnconfigure(1, weight=1)
-
-        Label(header, text="🧠 FileBrain",
-              font=FONTS["title"],
-              bg=COLORS["bg"], fg=COLORS["fg"]
-              ).grid(row=0, column=0, sticky="w")
-
-        Label(header, text="文件大脑 · 自动识别 · 智能命名 · 全文检索",
-              font=FONTS["body"],
-              bg=COLORS["bg"], fg=COLORS["text_secondary"]
-              ).grid(row=0, column=1, sticky="w", padx=(8, 0))
-
-        # 状态指示器 + 品牌来源
-        right_frame = Frame(header, bg=COLORS["bg"])
-        right_frame.grid(row=0, column=2, sticky="e")
-        right_frame.grid_columnconfigure(0, weight=1)
-
-        self.status_label = Label(right_frame,
-                                  text="⏸ 未开始",
-                                  font=FONTS["body"],
-                                  bg=COLORS["accent_light"],
-                                  fg=COLORS["accent"],
-                                  padx=10, pady=2)
-        self.status_label.grid(row=0, column=0, sticky="e")
-
-        # 品牌来源标注 — 科普视频推广
-        Label(right_frame,
-              text="⬇ GitHub 开源 · 免费下载",
-              font=("PingFang SC", 8),
-              bg=COLORS["bg"],
-              fg="#aaaaaa",
-              cursor="hand2"
-              ).grid(row=1, column=0, sticky="e", pady=(1, 0))
-
-    def _build_tabs(self, parent):
-        # Notebook (tab 控件)
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure("TNotebook", background=COLORS["bg"],
-                        borderwidth=0)
-        style.configure("TNotebook.Tab",
-                        font=FONTS["body"],
-                        padding=[12, 4])
-        style.map("TNotebook.Tab",
-                  background=[("selected", COLORS["card_bg"])])
-
-        self.notebook = ttk.Notebook(parent)
-        self.notebook.grid(row=1, column=0, sticky="nsew")
-
-        # 各标签页
-        self._build_monitor_tab()
-        self._build_search_tab()
-        self._build_journal_tab()
-        self._build_settings_tab()
-
-    # ---------- 标签页 1: 自动整理 ----------
-
-    def _build_monitor_tab(self):
-        frame = Frame(self.notebook, bg=COLORS["card_bg"])
-        self.notebook.add(frame, text="📁 自动整理")
-        frame.grid_columnconfigure(0, weight=1)
-        frame.grid_rowconfigure(3, weight=1)
-
-        # 目录选择
-        dir_frame = Frame(frame, bg=COLORS["card_bg"])
-        dir_frame.grid(row=0, column=0, sticky="ew",
-                       padx=12, pady=(12, 4))
-        dir_frame.grid_columnconfigure(1, weight=1)
-
-        Label(dir_frame, text="管理文件夹：",
-              font=FONTS["body"], bg=COLORS["card_bg"]
-              ).grid(row=0, column=0, sticky="w")
-
-        Entry(dir_frame, textvariable=self.watch_dir,
-              font=FONTS["body"], relief="flat",
-              bg="#f0ede8"
-              ).grid(row=0, column=1, sticky="ew", padx=6)
-
-        Button(dir_frame,
-               text="📂 选择",
-               font=FONTS["small"],
-               command=self._select_dir,
-               bg=COLORS["accent_light"],
-               relief="flat", padx=8
-               ).grid(row=0, column=2, sticky="e")
-
-        # 控制按钮
-        ctrl_frame = Frame(frame, bg=COLORS["card_bg"])
-        ctrl_frame.grid(row=1, column=0, sticky="ew",
-                        padx=12, pady=4)
-
-        self.btn_start = Button(ctrl_frame,
-                                text="▶ 开始整理",
-                                font=FONTS["body"],
-                                command=self._toggle_monitor,
-                                bg=COLORS["success"],
-                                fg="white",
-                                relief="flat", padx=16, pady=4)
+        # 按钮
+        b = ctk.CTkFrame(f, fg_color="transparent")
+        b.grid(row=3, column=0, sticky="ew", pady=4)
+        b.grid_columnconfigure(2, weight=1)
+        self.btn_start = ctk.CTkButton(b, text="▶ 开始整理",
+                                       font=("", 14, "bold"),
+                                       height=38, width=140,
+                                       command=self._toggle_monitor,
+                                       fg_color=COLOR_SUCCESS,
+                                       hover_color="#4a7a4a", corner_radius=8)
         self.btn_start.grid(row=0, column=0, sticky="w")
+        ctk.CTkButton(b, text="🔄 扫描现有文件",
+                      command=self._scan_existing,
+                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      height=38, width=120, corner_radius=8
+                      ).grid(row=0, column=1, padx=(8, 0))
+        self.status_label = ctk.CTkLabel(b, text="⏸ 未开始",
+                                         font=("", 12), text_color=COLOR_MUTED)
+        self.status_label.grid(row=0, column=2, sticky="e", padx=(12, 0))
 
-        Button(ctrl_frame,
-               text="🔄 扫描现有文件",
-               font=FONTS["body"],
-               command=self._scan_existing,
-               bg=COLORS["accent"],
-               fg="white",
-               relief="flat", padx=12, pady=4
-               ).grid(row=0, column=1, sticky="w", padx=(8, 0))
+        # 类型
+        t = ctk.CTkFrame(f, fg_color="transparent")
+        t.grid(row=4, column=0, sticky="ew", pady=2)
+        ctk.CTkLabel(t, text="识别类型：",
+                     font=("", 12)).grid(row=0, column=0)
+        self.pdf = ctk.BooleanVar(value=True)
+        self.word = ctk.BooleanVar(value=True)
+        self.excel = ctk.BooleanVar(value=True)
+        self.img = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(t, text="PDF (含扫描件)",
+                        variable=self.pdf).grid(row=0, column=1, padx=4)
+        ctk.CTkCheckBox(t, text="Word",
+                        variable=self.word).grid(row=0, column=2, padx=4)
+        ctk.CTkCheckBox(t, text="Excel",
+                        variable=self.excel).grid(row=0, column=3, padx=4)
+        ctk.CTkCheckBox(t, text="图片 (OCR)",
+                        variable=self.img).grid(row=0, column=4, padx=4)
 
-        # 文件类型选择
-        type_frame = Frame(frame, bg=COLORS["card_bg"])
-        type_frame.grid(row=2, column=0, sticky="ew",
-                        padx=12, pady=4)
+        # 日志
+        ctk.CTkLabel(f, text="📋 活动日志",
+                     font=("", 12, "bold")
+                     ).grid(row=5, column=0, sticky="nw", pady=(8, 2))
+        self.log = ctk.CTkTextbox(f, font=("Menlo", 11),
+                                  fg_color=COLOR_CARD, corner_radius=8,
+                                  height=160)
+        self.log.grid(row=6, column=0, sticky="nsew", pady=(0, 4))
 
-        Label(type_frame, text="识别类型：",
-              font=FONTS["body"], bg=COLORS["card_bg"]
-              ).grid(row=0, column=0, sticky="w")
+    # ═══════════════ 全文检索 ═══════════════
 
-        Checkbutton(type_frame, text="PDF (含扫描件)",
-                    variable=self.monitor_pdf,
-                    bg=COLORS["card_bg"],
-                    font=FONTS["body"]
-                    ).grid(row=0, column=1, padx=4)
-        Checkbutton(type_frame, text="Word",
-                    variable=self.monitor_word,
-                    bg=COLORS["card_bg"],
-                    font=FONTS["body"]
-                    ).grid(row=0, column=2, padx=4)
-        Checkbutton(type_frame, text="Excel",
-                    variable=self.monitor_excel,
-                    bg=COLORS["card_bg"],
-                    font=FONTS["body"]
-                    ).grid(row=0, column=3, padx=4)
-        Checkbutton(type_frame, text="图片 (OCR)",
-                    variable=self.monitor_image,
-                    bg=COLORS["card_bg"],
-                    font=FONTS["body"]
-                    ).grid(row=0, column=4, padx=4)
+    def _build_search(self, f):
+        f.grid_columnconfigure(0, weight=1)
+        f.grid_rowconfigure(2, weight=1)
 
-        # 活动日志
-        log_label = Label(frame, text="📋 活动日志",
-                          font=FONTS["heading"],
-                          bg=COLORS["card_bg"])
-        log_label.grid(row=3, column=0, sticky="nw",
-                       padx=12, pady=(8, 2))
+        bar = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=8)
+        bar.grid(row=0, column=0, sticky="ew", pady=(4, 6))
+        bar.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(bar, text="🔍 搜索",
+                     font=("", 15, "bold")
+                     ).grid(row=0, column=0, padx=(12, 4), pady=8)
+        self.se = ctk.CTkEntry(bar, font=("", 13), height=34,
+                               fg_color="#f0ede8", border_width=0)
+        self.se.grid(row=0, column=1, sticky="ew", padx=4, pady=8)
+        self.se.bind("<Return>", lambda e: self._do_search())
+        ctk.CTkButton(bar, text="搜索",
+                      command=self._do_search,
+                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      height=34, width=80, corner_radius=6
+                      ).grid(row=0, column=2, padx=(4, 12), pady=8)
 
-        log_frame = Frame(frame, bg=COLORS["card_bg"])
-        log_frame.grid(row=3, column=0, sticky="nsew",
-                       padx=12, pady=(0, 12))
-        log_frame.grid_rowconfigure(0, weight=1)
-        log_frame.grid_columnconfigure(0, weight=1)
+        self.sc = ctk.CTkLabel(f, text="", font=("", 12), text_color=COLOR_MUTED)
+        self.sc.grid(row=1, column=0, sticky="w")
 
-        self.log_text = Text(log_frame,
-                             font=FONTS["mono"],
-                             wrap=WORD,
-                             relief="flat",
-                             bg="#f8f6f2",
-                             fg=COLORS["fg"],
-                             height=8,
-                             state=NORMAL)
-        self.log_text.grid(row=0, column=0, sticky="nsew")
+        rf = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=8)
+        rf.grid(row=2, column=0, sticky="nsew")
+        rf.grid_columnconfigure(0, weight=1)
+        rf.grid_rowconfigure(0, weight=1)
+        self.rl = ctk.CTkScrollableFrame(rf, fg_color="transparent",
+                                          corner_radius=0)
+        self.rl.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
 
-        scroll = Scrollbar(log_frame, command=self.log_text.yview)
-        scroll.grid(row=0, column=1, sticky="ns")
-        self.log_text.config(yscrollcommand=scroll.set)
+        ab = ctk.CTkFrame(f, fg_color="transparent")
+        ab.grid(row=3, column=0, sticky="ew", pady=4)
+        ab.grid_columnconfigure(2, weight=1)
+        ctk.CTkButton(ab, text="📂 打开文件位置",
+                      command=self._open_file,
+                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      height=34, corner_radius=6
+                      ).grid(row=0, column=0, sticky="w")
+        ctk.CTkButton(ab, text="📤 记录发送",
+                      command=self._send_dialog,
+                      fg_color=COLOR_SUCCESS, hover_color="#4a7a4a",
+                      height=34, corner_radius=6
+                      ).grid(row=0, column=1, padx=(6, 0))
+        self.sp = ctk.CTkLabel(ab, text="", font=("", 11), text_color=COLOR_MUTED)
+        self.sp.grid(row=0, column=2, sticky="e")
 
-    # ---------- 标签页 2: 全文检索 ----------
+    # ═══════════════ 发送留痕 ═══════════════
 
-    def _build_search_tab(self):
-        frame = Frame(self.notebook, bg=COLORS["card_bg"])
-        self.notebook.add(frame, text="🔍 全文检索")
-        frame.grid_columnconfigure(0, weight=1)
-        frame.grid_rowconfigure(2, weight=1)
+    def _build_journal(self, f):
+        f.grid_columnconfigure(0, weight=1)
+        f.grid_rowconfigure(2, weight=1)
 
-        # 搜索栏
-        search_frame = Frame(frame, bg=COLORS["card_bg"])
-        search_frame.grid(row=0, column=0, sticky="ew",
-                          padx=12, pady=(12, 4))
-        search_frame.grid_columnconfigure(1, weight=1)
+        bar = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=8)
+        bar.grid(row=0, column=0, sticky="ew", pady=(4, 6))
+        bar.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(bar, text="📤 发送留痕",
+                     font=("", 15, "bold")
+                     ).grid(row=0, column=0, padx=(12, 4), pady=8)
+        self.je = ctk.CTkEntry(bar, font=("", 13), height=34,
+                               fg_color="#f0ede8", border_width=0)
+        self.je.grid(row=0, column=1, sticky="ew", padx=4, pady=8)
+        self.je.bind("<Return>", lambda e: self._j_search())
+        ctk.CTkButton(bar, text="搜索",
+                      command=self._j_search,
+                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      height=34, width=80, corner_radius=6
+                      ).grid(row=0, column=2, padx=(4, 12), pady=8)
 
-        Label(search_frame, text="搜索内容：",
-              font=FONTS["body"], bg=COLORS["card_bg"]
-              ).grid(row=0, column=0, sticky="w")
+        jf = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=8)
+        jf.grid(row=2, column=0, sticky="nsew")
+        jf.grid_columnconfigure(0, weight=1)
+        jf.grid_rowconfigure(0, weight=1)
+        self.jl = ctk.CTkScrollableFrame(jf, fg_color="transparent",
+                                          corner_radius=0)
+        self.jl.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
 
-        self.search_entry = Entry(search_frame,
-                                  font=FONTS["body"],
-                                  relief="flat",
-                                  bg="#f0ede8")
-        self.search_entry.grid(row=0, column=1, sticky="ew",
-                               padx=6)
-        self.search_entry.bind("<Return>",
-                               lambda e: self._do_search())
+        ab = ctk.CTkFrame(f, fg_color="transparent")
+        ab.grid(row=3, column=0, sticky="ew", pady=4)
+        ctk.CTkButton(ab, text="🔄 刷新",
+                      command=self._j_refresh,
+                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      height=34, corner_radius=6
+                      ).grid(row=0, column=0, sticky="w")
 
-        Button(search_frame,
-               text="🔍 搜索",
-               font=FONTS["body"],
-               command=self._do_search,
-               bg=COLORS["accent"],
-               fg="white",
-               relief="flat", padx=12
-               ).grid(row=0, column=2, sticky="e")
+    # ═══════════════ 设置 ═══════════════
 
-        # 搜索统计
-        self.search_count_label = Label(
-            frame, text="",
-            font=FONTS["small"],
-            bg=COLORS["card_bg"],
-            fg=COLORS["text_secondary"]
-        )
-        self.search_count_label.grid(row=1, column=0,
-                                     sticky="ew",
-                                     padx=12, pady=2)
+    def _build_settings(self, f):
+        f.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(f, text="⚙️ 设置",
+                     font=("PingFang SC", 18, "bold")
+                     ).grid(row=0, column=0, sticky="w", pady=(8, 12))
 
-        # 搜索结果
-        result_frame = Frame(frame, bg=COLORS["card_bg"])
-        result_frame.grid(row=2, column=0, sticky="nsew",
-                          padx=12, pady=(0, 12))
-        result_frame.grid_rowconfigure(0, weight=1)
-        result_frame.grid_columnconfigure(0, weight=1)
+        c1 = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=10)
+        c1.grid(row=1, column=0, sticky="ew", pady=4)
+        ctk.CTkLabel(c1, text="智能命名",
+                     font=("", 14, "bold")
+                     ).pack(anchor="w", padx=16, pady=(12, 4))
+        self.ar = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(c1, text="自动重命名文件（内容摘要 · 日期 · 作者）",
+                        variable=self.ar, font=("", 13)
+                        ).pack(anchor="w", padx=16, pady=2)
+        self.av = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(c1, text="文件修改后自动标注版本号 (v1.0)",
+                        variable=self.av, font=("", 13)
+                        ).pack(anchor="w", padx=16, pady=2)
+        ctk.CTkLabel(c1, text="格式: 内容摘要 · 2026.06.22 · 作者 · v1.0.pdf",
+                     font=("Menlo", 11), text_color=COLOR_MUTED
+                     ).pack(anchor="w", padx=16, pady=(4, 12))
 
-        # 结果列表（Treeview）
-        columns = ("file", "title", "context", "score")
-        self.result_tree = ttk.Treeview(
-            result_frame, columns=columns,
-            show="headings", height=12,
-            selectmode="browse"
-        )
-        self.result_tree.heading("file", text="文件名")
-        self.result_tree.heading("title", text="标题")
-        self.result_tree.heading("context", text="匹配上下文")
-        self.result_tree.heading("score", text="相关度")
-        self.result_tree.column("file", width=180)
-        self.result_tree.column("title", width=120)
-        self.result_tree.column("context", width=300)
-        self.result_tree.column("score", width=60, anchor="center")
-        self.result_tree.grid(row=0, column=0, sticky="nsew")
+        s = ctk.CTkFrame(f, fg_color="#e8d5c0", corner_radius=10,
+                         border_width=1, border_color=COLOR_ACCENT)
+        s.grid(row=2, column=0, sticky="ew", pady=(12, 4))
+        ctk.CTkLabel(s, text="⬇ 免费开源 · 欢迎下载 ⬇",
+                     font=("", 15, "bold"), text_color=COLOR_ACCENT
+                     ).pack(pady=(10, 2))
+        ctk.CTkLabel(s, text="github.com/mmm1111lhc/FileBrain",
+                     font=("Menlo", 12), text_color=COLOR_ACCENT
+                     ).pack(pady=(0, 10))
 
-        scroll_y = Scrollbar(result_frame,
-                             command=self.result_tree.yview)
-        scroll_y.grid(row=0, column=1, sticky="ns")
-        self.result_tree.config(yscrollcommand=scroll_y.set)
+        c2 = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=10)
+        c2.grid(row=3, column=0, sticky="ew", pady=4)
+        ctk.CTkLabel(c2, text="关于", font=("", 14, "bold")
+                     ).pack(anchor="w", padx=16, pady=(12, 4))
+        ctk.CTkLabel(c2,
+                     text=("FileBrain · 文件大脑 v1.0\n\n"
+                           "🔒 纯本地 · 不过云\n"
+                           "所有文件在本地处理，数据不上传云端\n\n"
+                           "📄 支持 PDF(含OCR) · Word · Excel · 图片"),
+                     font=("", 12), justify="left"
+                     ).pack(anchor="w", padx=16, pady=(0, 12))
 
-        self.result_tree.bind("<<TreeviewSelect>>",
-                              self._on_result_select)
-
-        # 操作按钮
-        action_frame = Frame(frame, bg=COLORS["card_bg"])
-        action_frame.grid(row=3, column=0, sticky="ew",
-                          padx=12, pady=(0, 12))
-
-        Button(action_frame,
-               text="📂 打开文件位置",
-               font=FONTS["body"],
-               command=self._open_file_location,
-               bg=COLORS["accent_light"],
-               relief="flat", padx=10
-               ).grid(row=0, column=0, sticky="w")
-
-        Button(action_frame,
-               text="📤 记录发送",
-               font=FONTS["body"],
-               command=self._show_send_dialog,
-               bg=COLORS["accent"],
-               fg="white",
-               relief="flat", padx=10
-               ).grid(row=0, column=1, sticky="w", padx=(6, 0))
-
-        # 发送记录预览
-        self.send_preview = Label(
-            action_frame,
-            text="",
-            font=FONTS["small"],
-            bg=COLORS["card_bg"],
-            fg=COLORS["text_secondary"]
-        )
-        self.send_preview.grid(row=0, column=2, sticky="w",
-                               padx=(12, 0))
-
-    # ---------- 标签页 3: 发送留痕 ----------
-
-    def _build_journal_tab(self):
-        frame = Frame(self.notebook, bg=COLORS["card_bg"])
-        self.notebook.add(frame, text="📤 发送留痕")
-        frame.grid_columnconfigure(0, weight=1)
-        frame.grid_rowconfigure(2, weight=1)
-
-        # 搜索栏
-        jsearch_frame = Frame(frame, bg=COLORS["card_bg"])
-        jsearch_frame.grid(row=0, column=0, sticky="ew",
-                           padx=12, pady=(12, 4))
-        jsearch_frame.grid_columnconfigure(1, weight=1)
-
-        Label(jsearch_frame, text="搜索发送记录：",
-              font=FONTS["body"], bg=COLORS["card_bg"]
-              ).grid(row=0, column=0, sticky="w")
-
-        self.journal_search_entry = Entry(
-            jsearch_frame, font=FONTS["body"],
-            relief="flat", bg="#f0ede8"
-        )
-        self.journal_search_entry.grid(row=0, column=1,
-                                       sticky="ew", padx=6)
-        self.journal_search_entry.bind(
-            "<Return>", lambda e: self._search_journal()
-        )
-
-        Button(jsearch_frame,
-               text="🔍 搜索",
-               font=FONTS["body"],
-               command=self._search_journal,
-               bg=COLORS["accent"],
-               fg="white",
-               relief="flat", padx=8
-               ).grid(row=0, column=2, sticky="e")
-
-        # 记录列表
-        jlist_frame = Frame(frame, bg=COLORS["card_bg"])
-        jlist_frame.grid(row=2, column=0, sticky="nsew",
-                         padx=12, pady=(0, 12))
-        jlist_frame.grid_rowconfigure(0, weight=1)
-        jlist_frame.grid_columnconfigure(0, weight=1)
-
-        jcolumns = ("time", "file", "recipient", "method", "notes")
-        self.journal_tree = ttk.Treeview(
-            jlist_frame, columns=jcolumns,
-            show="headings", height=12,
-            selectmode="browse"
-        )
-        self.journal_tree.heading("time", text="发送时间")
-        self.journal_tree.heading("file", text="文件名")
-        self.journal_tree.heading("recipient", text="接收人")
-        self.journal_tree.heading("method", text="方式")
-        self.journal_tree.heading("notes", text="备注")
-        self.journal_tree.column("time", width=130)
-        self.journal_tree.column("file", width=200)
-        self.journal_tree.column("recipient", width=120)
-        self.journal_tree.column("method", width=100)
-        self.journal_tree.column("notes", width=150)
-        self.journal_tree.grid(row=0, column=0, sticky="nsew")
-
-        jscroll_y = Scrollbar(jlist_frame,
-                              command=self.journal_tree.yview)
-        jscroll_y.grid(row=0, column=1, sticky="ns")
-        self.journal_tree.config(yscrollcommand=jscroll_y.set)
-
-        # 操作按钮
-        jaction_frame = Frame(frame, bg=COLORS["card_bg"])
-        jaction_frame.grid(row=3, column=0, sticky="ew",
-                           padx=12, pady=(0, 12))
-
-        Button(jaction_frame,
-               text="🗑 删除选中记录",
-               font=FONTS["body"],
-               command=self._delete_journal_record,
-               bg=COLORS["error"],
-               fg="white",
-               relief="flat", padx=10
-               ).grid(row=0, column=0, sticky="w")
-
-        Button(jaction_frame,
-               text="🔄 刷新",
-               font=FONTS["body"],
-               command=self._refresh_journal,
-               bg=COLORS["accent_light"],
-               relief="flat", padx=10
-               ).grid(row=0, column=1, sticky="w", padx=(6, 0))
-
-    # ---------- 标签页 4: 设置 ----------
-
-    def _build_settings_tab(self):
-        frame = Frame(self.notebook, bg=COLORS["card_bg"])
-        self.notebook.add(frame, text="⚙️ 设置")
-        frame.grid_columnconfigure(0, weight=1)
-
-        # 命名设置
-        Label(frame,
-              text="智能命名设置",
-              font=FONTS["heading"],
-              bg=COLORS["card_bg"]
-              ).grid(row=0, column=0, sticky="w",
-                     padx=16, pady=(16, 8))
-
-        Checkbutton(frame,
-                    text="自动重命名文件（内容摘要 + 日期 + 版本号）",
-                    variable=self.auto_rename,
-                    bg=COLORS["card_bg"],
-                    font=FONTS["body"]
-                    ).grid(row=1, column=0, sticky="w",
-                           padx=16, pady=2)
-
-        Checkbutton(frame,
-                    text="按最后修改时间自动标注版本号",
-                    variable=self.auto_version,
-                    bg=COLORS["card_bg"],
-                    font=FONTS["body"]
-                    ).grid(row=2, column=0, sticky="w",
-                           padx=16, pady=2)
-
-        # 作者标注设置
-        author_frame = Frame(frame, bg=COLORS["card_bg"])
-        author_frame.grid(row=3, column=0, sticky="ew",
-                          padx=16, pady=(6, 2))
-        author_frame.grid_columnconfigure(2, weight=1)
-
-        Checkbutton(author_frame,
-                    text="文件名标注作者/来源：",
-                    variable=self.include_author,
-                    bg=COLORS["card_bg"],
-                    font=FONTS["body"]
-                    ).grid(row=0, column=0, sticky="w")
-
-        Entry(author_frame,
-              textvariable=self.author_name,
-              font=FONTS["body"],
-              relief="flat",
-              bg="#f0ede8",
-              width=16
-              ).grid(row=0, column=1, sticky="w", padx=(4, 0))
-
-        Label(author_frame,
-              text="→ 文件名效果: 摘要_日期_作者_v1.0.pdf",
-              font=FONTS["small"],
-              bg=COLORS["card_bg"],
-              fg=COLORS["text_secondary"]
-              ).grid(row=0, column=2, sticky="w", padx=(8, 0))
-
-        # ── 来源信息（推广用）──
-        source_frame = Frame(frame, bg=COLORS["accent_light"],
-                             highlightbackground=COLORS["accent"],
-                             highlightthickness=1)
-        source_frame.grid(row=4, column=0, sticky="ew",
-                          padx=16, pady=(16, 4))
-        source_frame.grid_columnconfigure(0, weight=1)
-
-        Label(source_frame,
-              text="⬇ 免费开源工具 · 欢迎下载使用 ⬇",
-              font=("PingFang SC", 11, "bold"),
-              bg=COLORS["accent_light"],
-              fg=COLORS["accent"]
-              ).grid(row=0, column=0, pady=(6, 0))
-
-        Label(source_frame,
-              text="GitHub 搜索「FileBrain」或访问下方链接下载",
-              font=FONTS["body"],
-              bg=COLORS["accent_light"],
-              fg=COLORS["fg"]
-              ).grid(row=1, column=0, pady=(0, 4))
-
-        Label(source_frame,
-              text="🔗 github.com/mmm1111lhc/FileBrain",
-              font=("Menlo", 10),
-              bg=COLORS["accent_light"],
-              fg=COLORS["accent"],
-              cursor="hand2"
-              ).grid(row=2, column=0, pady=(0, 6))
-
-        # 关于
-        Label(frame,
-              text="\n关于 FileBrain v1.0",
-              font=FONTS["heading"],
-              bg=COLORS["card_bg"]
-              ).grid(row=5, column=0, sticky="w",
-                     padx=16, pady=(12, 4))
-
-        about_text = (
-            "桌面文件智能整理工具\n\n"
-            "功能：\n"
-            "  • 自动扫描文件，识别内容\n"
-            "  • 智能重命名：内容摘要 + 日期 + 版本号\n"
-            "  • 支持 PDF（含扫描件OCR）、Word、Excel、图片\n"
-            "  • 全文检索，快速定位文件\n"
-            "  • 发送留痕，记录文件发给谁\n"
-            "\n"
-            "依赖：\n"
-            "  • PyMuPDF / python-docx / openpyxl\n"
-            "  • Tesseract OCR (brew install tesseract)\n"
-            "  • Pillow / pytesseract\n"
-        )
-        Label(frame,
-              text=about_text,
-              font=FONTS["body"],
-              bg=COLORS["card_bg"],
-              fg=COLORS["text_secondary"],
-              justify="left"
-              ).grid(row=5, column=0, sticky="w",
-                     padx=16, pady=2)
-
-    # ==================== 核心逻辑 ====================
+    # ═══════════════ 核心逻辑 ═══════════════
 
     def _select_dir(self):
-        """选择监控目录"""
-        d = filedialog.askdirectory(
-            title="选择要监控的文件夹",
-            initialdir=self.watch_dir.get()
-        )
+        d = filedialog.askdirectory(initialdir=self.watch_dir.get())
         if d:
             self.watch_dir.set(d)
 
     def _toggle_monitor(self):
-        """启动/停止监控"""
         from core.watcher import Watcher
-
         if self.watcher and self.watcher.is_running():
-            # 停止
-            threading.Thread(target=self.watcher.stop,
-                             daemon=True).start()
+            threading.Thread(target=self.watcher.stop, daemon=True).start()
             self.watcher = None
-            self.btn_start.config(text="▶ 开始整理",
-                                  bg=COLORS["success"])
-            self.status_label.config(text="⏸ 已暂停",
-                                     bg=COLORS["accent_light"])
+            self.btn_start.configure(text="▶ 开始整理", fg_color=COLOR_SUCCESS)
+            self.status_label.configure(text="⏸ 已暂停")
             self._log("自动整理已停止")
         else:
-            # 启动
-            watch_dir = self.watch_dir.get()
-            if not os.path.isdir(watch_dir):
-                messagebox.showerror("错误", f"目录不存在：{watch_dir}")
+            wd = self.watch_dir.get()
+            if not os.path.isdir(wd):
+                messagebox.showerror("错误", f"目录不存在：{wd}")
                 return
+            self.watcher = Watcher(wd, on_processed=self._on_proc)
+            threading.Thread(target=self._start_w, daemon=True).start()
+            self._log(f"正在启动: {wd}")
 
-            self.watcher = Watcher(
-                watch_dir,
-                on_processed=self._on_file_processed
-            )
+    def _start_w(self):
+        self.watcher.start()
+        self.root.after(0, self._started)
 
-            def start_watcher():
-                self.watcher.start()
-                self.root.after(0, self._on_monitor_started)
+    def _started(self):
+        self.btn_start.configure(text="⏹ 停止整理", fg_color=COLOR_ERROR)
+        self.status_label.configure(text="🟢 整理中")
 
-            threading.Thread(target=start_watcher,
-                             daemon=True).start()
-            self._log(f"正在启动监控: {watch_dir}")
-
-    def _on_monitor_started(self):
-        self.btn_start.config(text="⏹ 停止整理",
-                              bg=COLORS["error"])
-        self.status_label.config(text="🟢 整理中",
-                                 bg=COLORS["success"])
-
-    def _on_file_processed(self, status, old_name,
-                           new_name, version, date):
-        """文件处理完成回调"""
-        msg = f"[{status}] {old_name} → {new_name}  (v{version})"
-        self.root.after(0, self._log, msg)
+    def _on_proc(self, status, old, new, ver, date):
+        self.root.after(0, self._log, f"[{status}] {old} → {new}")
 
     def _scan_existing(self):
-        """扫描已有文件"""
         if not self.watcher or not self.watcher.is_running():
-            messagebox.showinfo("提示",
-                                "请先点击「开始整理」")
+            messagebox.showinfo("提示", "请先点击「开始整理」")
             return
+        threading.Thread(target=self.watcher.handler.scan_existing,
+                         daemon=True).start()
+        self._log("开始扫描现有文件...")
 
-        threading.Thread(
-            target=self.watcher.handler.scan_existing,
-            daemon=True
-        ).start()
-        self._log("开始扫描已有文件...")
-
-    def _log(self, message: str):
-        """在日志区添加一条消息"""
-        from datetime import datetime
-        ts = datetime.now().strftime("%H:%M:%S")
-        self.log_text.insert(END, f"[{ts}] {message}\n")
-        self.log_text.see(END)
-
-    # ---------- 搜索 ----------
+    def _log(self, msg):
+        self.log.insert("end", f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+        self.log.see("end")
 
     def _do_search(self):
-        """执行全文检索"""
-        query = self.search_entry.get().strip()
-        if not query:
+        q = self.se.get().strip()
+        if not q:
             return
-
-        # 清除旧结果
-        for item in self.result_tree.get_children():
-            self.result_tree.delete(item)
-
+        for w in self.rl.winfo_children():
+            w.destroy()
         if not self.watcher:
             messagebox.showinfo("提示", "请先启动自动整理")
             return
+        rs = self.watcher.search_index.search(q)
+        self.sc.configure(text=f"找到 {len(rs)} 个结果")
+        for r in rs:
+            c = ctk.CTkFrame(self.rl, fg_color="#f8f6f2",
+                             corner_radius=6, height=38)
+            c.pack(fill="x", pady=2)
+            fn = ctk.CTkLabel(c, text=f"📄 {r.get('new_name', r.get('file_name',''))}",
+                              font=("", 12), anchor="w")
+            fn.pack(side="left", padx=8)
+            cx = r.get("context", "")[:40]
+            ctk.CTkLabel(c, text=cx, font=("", 11),
+                         text_color=COLOR_MUTED).pack(side="left", padx=4)
+            ctk.CTkLabel(c, text=f"相关度 {r.get('score',0)}",
+                         font=("", 11), text_color=COLOR_MUTED,
+                         anchor="e", width=70
+                         ).pack(side="right", padx=8)
+            c.bind("<Button-1>", lambda e, p=r["path"]: setattr(
+                self, "selected_file_path", p))
 
-        results = self.watcher.search_index.search(query)
-
-        if not results:
-            self.search_count_label.config(
-                text="未找到匹配结果"
-            )
+    def _open_file(self):
+        p = self.selected_file_path
+        if not p:
+            messagebox.showinfo("提示", "请先在搜索结果中选择文件")
             return
+        os.system(f'open -R "{p}"')
 
-        self.search_count_label.config(
-            text=f"找到 {len(results)} 个匹配文件"
-        )
-
-        for r in results:
-            self.result_tree.insert("", END,
-                values=(
-                    r.get("new_name", r.get("file_name", "")),
-                    r.get("title", "")[:30],
-                    r.get("context", "")[:60],
-                    r.get("score", 0),
-                ),
-                tags=(r.get("path", ""),)
-            )
-
-    def _on_result_select(self, event):
-        """搜索结果选中事件"""
-        sel = self.result_tree.selection()
-        if not sel:
+    def _send_dialog(self):
+        p = self.selected_file_path
+        if not p:
+            messagebox.showinfo("提示", "请先选择文件")
             return
-
-        item = self.result_tree.item(sel[0])
-        file_path = item.get("tags", [""])[0]
-        self.selected_file_path.set(file_path)
-
-        # 预览发送记录
-        if self.watcher and file_path:
-            records = self.watcher.send_journal.get_records_for_file(
-                file_path
-            )
-            if records:
-                latest = records[0]
-                self.send_preview.config(
-                    text=f"📤 最近发送: {latest.get('recipient','?')} "
-                         f"于 {latest.get('sent_at_str','')}"
-                )
-            else:
-                self.send_preview.config(text="")
-
-    def _open_file_location(self):
-        """在 Finder 中打开文件所在位置"""
-        file_path = self.selected_file_path.get()
-        if not file_path:
-            messagebox.showinfo("提示", "请先在搜索结果中选择一个文件")
-            return
-        os.system(f'open -R "{file_path}"')
-
-    # ---------- 发送留痕 ----------
-
-    def _show_send_dialog(self):
-        """弹出发送记录对话框"""
-        file_path = self.selected_file_path.get()
-        if not file_path:
-            messagebox.showinfo("提示", "请先在搜索结果中选择一个文件")
-            return
-
-        dialog = SendDialog(self.root, file_path,
-                            self.watcher.send_journal,
-                            self._on_send_recorded)
-        self.root.wait_window(dialog.top)
-
-    def _on_send_recorded(self):
-        """发送记录已添加"""
-        self._refresh_journal()
-        self._log("✅ 发送记录已保存")
-
-    def _search_journal(self):
-        """搜索发送记录"""
-        query = self.journal_search_entry.get().strip()
-
-        for item in self.journal_tree.get_children():
-            self.journal_tree.delete(item)
-
         if not self.watcher:
             return
+        d = SendDialog(self.root, p, self.watcher.send_journal, self._on_sent)
+        self.root.wait_window(d.top)
 
-        if query:
-            records = self.watcher.send_journal.search(query)
-        else:
-            records = self.watcher.send_journal.get_recent()
+    def _on_sent(self):
+        self._j_refresh()
+        self._log("✅ 发送记录已保存")
 
-        for r in records:
-            self.journal_tree.insert("", END, values=(
-                r.get("sent_at_str", ""),
-                r.get("file_name", ""),
-                r.get("recipient", ""),
-                r.get("method", ""),
-                r.get("notes", ""),
-            ), tags=(r.get("id", 0),))
-
-    def _delete_journal_record(self):
-        """删除选中的发送记录"""
-        sel = self.journal_tree.selection()
-        if not sel:
+    def _j_search(self):
+        q = self.je.get().strip()
+        for w in self.jl.winfo_children():
+            w.destroy()
+        if not self.watcher:
             return
+        rs = (self.watcher.send_journal.search(q)
+              if q else self.watcher.send_journal.get_recent(30))
+        for r in rs:
+            c = ctk.CTkFrame(self.jl, fg_color="#f8f6f2",
+                             corner_radius=6, height=36)
+            c.pack(fill="x", pady=2)
+            ctk.CTkLabel(c, text=r.get("sent_at_str",""),
+                         font=("Menlo", 11), width=110, anchor="w"
+                         ).pack(side="left", padx=6)
+            ctk.CTkLabel(c, text=Path(r.get("file_name","")).name,
+                         font=("", 12)).pack(side="left", padx=4, fill="x", expand=True)
+            ctk.CTkLabel(c, text=f"→ {r.get('recipient','')}",
+                         font=("", 12), text_color=COLOR_ACCENT
+                         ).pack(side="left", padx=4)
+            ctk.CTkLabel(c, text=f"({r.get('method','')})",
+                         font=("", 11), text_color=COLOR_MUTED
+                         ).pack(side="right", padx=8)
 
-        record_id = self.journal_tree.item(sel[0]).get("tags", [0])[0]
-        if messagebox.askyesno("确认删除",
-                                "确定删除这条发送记录吗？"):
-            if self.watcher:
-                self.watcher.send_journal.delete_record(record_id)
-            self._refresh_journal()
-            self._log("🗑 发送记录已删除")
-
-    def _refresh_journal(self):
-        """刷新发送记录列表"""
-        self.journal_search_entry.delete(0, END)
-        self._search_journal()
-
-    # ---------- 生命周期 ----------
+    def _j_refresh(self):
+        self.je.delete(0, "end")
+        self._j_search()
 
     def _on_close(self):
-        """窗口关闭时停止监控"""
         if self.watcher and self.watcher.is_running():
             self.watcher.stop()
         self.root.destroy()
 
     def run(self):
-        """启动应用"""
         self.root.mainloop()
 
 
 class SendDialog:
-    """发送记录录入对话框"""
+    METHODS = ["微信 WeChat", "邮件 Email", "AirDrop", "钉钉 DingTalk",
+               "企业微信 WeCom", "飞书 Feishu", "USB 拷贝", "其他"]
 
-    def __init__(self, parent, file_path, journal, callback):
-        self.journal = journal
-        self.file_path = file_path
-        self.callback = callback
-
-        self.top = Toplevel(parent)
-        self.top.title("📤 记录文件发送")
-        self.top.geometry("420x380")
-        self.top.configure(bg=COLORS["card_bg"])
+    def __init__(self, parent, path, journal, cb):
+        self.j = journal
+        self.fp = path
+        self.cb = cb
+        self.top = ctk.CTkToplevel(parent)
+        self.top.title("📤 记录发送")
+        self.top.geometry("400x300")
         self.top.resizable(False, False)
 
-        # 文件信息
-        Label(self.top,
-              text=f"文件: {Path(file_path).name}",
-              font=FONTS["body"],
-              bg=COLORS["card_bg"],
-              wraplength=380
-              ).pack(padx=16, pady=(16, 8), anchor="w")
+        ctk.CTkLabel(self.top, text=f"文件: {Path(path).name}",
+                     font=("", 13), wraplength=380
+                     ).pack(padx=16, pady=(14, 6), anchor="w")
 
-        # 接收人
-        Label(self.top, text="接收人 *",
-              font=FONTS["body"],
-              bg=COLORS["card_bg"]
-              ).pack(padx=16, pady=(8, 2), anchor="w")
-        self.recipient_entry = Entry(self.top,
-                                     font=FONTS["body"],
-                                     relief="flat",
-                                     bg="#f0ede8")
-        self.recipient_entry.pack(padx=16, fill="x", ipady=4)
+        ctk.CTkLabel(self.top, text="接收人 *", font=("", 12)
+                     ).pack(padx=16, pady=(6, 2), anchor="w")
+        self.r = ctk.CTkEntry(self.top, font=("", 13), height=32,
+                              fg_color="#f0ede8", border_width=0)
+        self.r.pack(padx=16, fill="x")
 
-        # 发送方式
-        Label(self.top, text="发送方式 *",
-              font=FONTS["body"],
-              bg=COLORS["card_bg"]
-              ).pack(padx=16, pady=(8, 2), anchor="w")
-        self.method_combo = Combobox(
-            self.top,
-            values=self.journal.METHODS,
-            font=FONTS["body"],
-            state="normal"
-        )
-        self.method_combo.set("微信 WeChat")
-        self.method_combo.pack(padx=16, fill="x", ipady=2)
+        ctk.CTkLabel(self.top, text="发送方式", font=("", 12)
+                     ).pack(padx=16, pady=(6, 2), anchor="w")
+        self.m = ctk.CTkComboBox(self.top, values=self.METHODS,
+                                  font=("", 13), height=32,
+                                  fg_color="#f0ede8", border_width=0)
+        self.m.set("微信 WeChat")
+        self.m.pack(padx=16, fill="x")
 
-        # 备注
-        Label(self.top, text="备注",
-              font=FONTS["body"],
-              bg=COLORS["card_bg"]
-              ).pack(padx=16, pady=(8, 2), anchor="w")
-        self.notes_entry = Entry(self.top,
-                                 font=FONTS["body"],
-                                 relief="flat",
-                                 bg="#f0ede8")
-        self.notes_entry.pack(padx=16, fill="x", ipady=4)
-
-        # 按钮
-        btn_frame = Frame(self.top, bg=COLORS["card_bg"])
-        btn_frame.pack(padx=16, pady=(16, 12), fill="x")
-
-        Button(btn_frame,
-               text="取消",
-               font=FONTS["body"],
-               command=self.top.destroy,
-               bg=COLORS["accent_light"],
-               relief="flat", padx=16
-               ).pack(side="left")
-
-        Button(btn_frame,
-               text="✅ 保存记录",
-               font=FONTS["body"],
-               command=self._save,
-               bg=COLORS["success"],
-               fg="white",
-               relief="flat", padx=16
-               ).pack(side="right")
+        bf = ctk.CTkFrame(self.top, fg_color="transparent")
+        bf.pack(padx=16, pady=(14, 12), fill="x")
+        ctk.CTkButton(bf, text="取消", command=self.top.destroy,
+                      fg_color=COLOR_ACCENT, hover_color="#b06830",
+                      height=34, corner_radius=6
+                      ).pack(side="left")
+        ctk.CTkButton(bf, text="✅ 保存", command=self._save,
+                      fg_color=COLOR_SUCCESS, hover_color="#4a7a4a",
+                      height=34, corner_radius=6
+                      ).pack(side="right")
 
     def _save(self):
-        recipient = self.recipient_entry.get().strip()
-        method = self.method_combo.get().strip()
-
-        if not recipient:
-            messagebox.showwarning("提示", "请填写接收人",
-                                   parent=self.top)
+        r = self.r.get().strip()
+        if not r:
+            messagebox.showwarning("提示", "请填写接收人", parent=self.top)
             return
-
-        notes = self.notes_entry.get().strip()
-        file_name = Path(self.file_path).name
-
-        self.journal.add_record(
-            self.file_path, file_name,
-            recipient, method, notes
-        )
-        self.callback()
+        self.j.add_record(self.fp, Path(self.fp).name,
+                          r, self.m.get(), "")
+        self.cb()
         self.top.destroy()
 
 
 def main():
-    """启动 FileBrain GUI"""
+    ctk.set_appearance_mode("light")
     app = FileBrainApp()
     app.run()
 

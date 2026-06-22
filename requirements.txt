@@ -14,3 +14,4 @@ pytesseract>=0.3.10      # Tesseract OCR Python 封装
 
 # （可选）更好的 OCR 质量
 # easyocr>=1.7.0          # 深度学习 OCR（替代 pytesseract）
+customtkinter>=5.2.0
