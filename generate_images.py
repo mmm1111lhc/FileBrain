@@ -242,23 +242,23 @@ def make_features_image():
         <div style="display:flex;gap:12px;">
             <div style="flex:1;background:#f8f6f2;border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:28px;">🏛️</div>
-                <div style="font-size:13px;font-weight:bold;">政务软件下载</div>
-                <div style="font-size:12px;color:#666;">浙里办、随申办→自动命名</div>
+                <div style="font-size:13px;font-weight:bold;">政务软件</div>
+                <div style="font-size:12px;color:#666;">浙里办、粤省事、随申办<br>北京通、鄂汇办 等全国各省</div>
             </div>
             <div style="flex:1;background:#f8f6f2;border-radius:8px;padding:12px;text-align:center;">
-                <div style="font-size:28px;">💼</div>
-                <div style="font-size:13px;font-weight:bold;">办公文档管理</div>
-                <div style="font-size:12px;color:#666;">合同/方案→按内容归档</div>
+                <div style="font-size:28px;">💬</div>
+                <div style="font-size:13px;font-weight:bold;">办公通讯</div>
+                <div style="font-size:12px;color:#666;">钉钉、企业微信<br>飞书、WeChat</div>
             </div>
             <div style="flex:1;background:#f8f6f2;border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:28px;">📚</div>
-                <div style="font-size:13px;font-weight:bold;">学术资料整理</div>
-                <div style="font-size:12px;color:#666;">论文/扫描件→OCR+检索</div>
+                <div style="font-size:13px;font-weight:bold;">办公文档</div>
+                <div style="font-size:12px;color:#666;">合同、方案、报告<br>按内容+版本归档</div>
             </div>
             <div style="flex:1;background:#f8f6f2;border-radius:8px;padding:12px;text-align:center;">
                 <div style="font-size:28px;">🏠</div>
-                <div style="font-size:13px;font-weight:bold;">个人文件归档</div>
-                <div style="font-size:12px;color:#666;">证件扫描件→自动命名</div>
+                <div style="font-size:13px;font-weight:bold;">个人资料</div>
+                <div style="font-size:12px;color:#666;">论文、扫描件、证件<br>OCR识别+全文检索</div>
             </div>
         </div>
     </div>"""
