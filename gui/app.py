@@ -29,9 +29,9 @@ COLOR_SUCCESS = "#5a8f5a"
 COLOR_ERROR = "#b85450"
 COLOR_BORDER_SUBTLE = "#e8e0d4"    # 极淡边框
 
-FONT_TITLE = ("PingFang SC", 20, "bold")
-FONT_SECTION = ("PingFang SC", 15, "bold")
-FONT_BODY = ("PingFang SC", 13)
+FONT_TITLE = ("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", 20, "bold")
+FONT_SECTION = ("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", 15, "bold")
+FONT_BODY = ("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", 13)
 FONT_MONO = ("Menlo", 11)
 
 logger = logging.getLogger("FileBrain")
@@ -507,7 +507,13 @@ class FileBrainApp:
         if not p:
             messagebox.showinfo("提示", "请先在搜索结果中选择文件")
             return
-        os.system(f'open -R "{p}"')
+        import platform as _plt
+        if _plt.system() == "Darwin":
+            os.system(f'open -R "{p}"')
+        elif _plt.system() == "Windows":
+            os.system(f'explorer /select,"{p}"')
+        else:
+            os.system(f'xdg-open "{os.path.dirname(p)}"')
 
     def _send_dialog(self):
         p = self.selected_file_path
