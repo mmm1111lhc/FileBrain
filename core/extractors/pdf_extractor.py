@@ -98,24 +98,24 @@ class PDFExtractor:
                     "error": str(e)}
 
     def _ocr_pdf(self, doc) -> str:
-        """对扫描件 PDF 进行 OCR 识别"""
+        """对扫描件 PDF 进行 OCR 识别（300 DPI + 灰度增强）"""
         if not self._have_ocr:
             return ""
         text_parts = []
-        for page_num in range(min(len(doc), 5)):  # 最多 5 页
-            page = doc[page_num]
-            # 按较高 DPI 渲染
-            pix = page.get_pixmap(dpi=200)
-            img_data = pix.tobytes("png")
+        total = min(len(doc), 20)
+        for i in range(total):
+            page = doc[i]
+            pix = page.get_pixmap(dpi=300)
             from io import BytesIO
-            img = self._PIL_Image.open(BytesIO(img_data))
+            img = self._PIL_Image.open(BytesIO(pix.tobytes("png")))
+            img = img.convert("L")  # 灰度提高识别率
             try:
-                page_text = self._pytesseract.image_to_string(
-                    img, lang="chi_sim+eng"
+                txt = self._pytesseract.image_to_string(
+                    img, lang="chi_sim+eng", config="--psm 6"
                 )
-                text_parts.append(page_text.strip())
+                text_parts.append(txt.strip())
             except Exception as e:
-                logger.warning(f"OCR 第 {page_num+1} 页失败: {e}")
+                logger.warning(f"OCR 第 {i+1} 页失败: {e}")
         return "\n".join(text_parts)
 
     def _extract_title(self, text: str, meta_title: str) -> str:
