@@ -153,7 +153,7 @@ class FileBrainApp:
 
     def _build_organize(self, f):
         f.grid_columnconfigure(0, weight=1)
-        f.grid_rowconfigure(4, weight=1)
+        f.grid_rowconfigure(5, weight=1)
 
         # 路径行
         p = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
@@ -220,6 +220,30 @@ class FileBrainApp:
                             fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
                             font=FONT_BODY
                             ).pack(side="left", padx=6, pady=8)
+
+        # 命名格式 + 隐私提示
+        n = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=10,
+                         border_width=1, border_color=COLOR_BORDER_SUBTLE)
+        n.grid(row=3, column=0, sticky="ew", pady=3)
+        ctk.CTkLabel(n, text="📛 命名格式：",
+                     font=FONT_BODY, text_color=COLOR_TEXT
+                     ).pack(side="left", padx=(16, 4), pady=8)
+        TEMPLATES = ["摘要 · 日期 · 作者 · 版本", "日期 · 摘要",
+                     "摘要 · 日期 · 版本", "摘要_日期_版本", "日期_摘要"]
+        self.tpl_var = ctk.StringVar(value=TEMPLATES[0])
+        ctk.CTkOptionMenu(n, values=TEMPLATES, variable=self.tpl_var,
+                          font=FONT_BODY, height=30, width=200,
+                          fg_color="#f0ede8",
+                          button_color=COLOR_ACCENT,
+                          button_hover_color=COLOR_ACCENT_DARK,
+                          dropdown_font=FONT_BODY
+                          ).pack(side="left", padx=4, pady=8)
+        self.tpl_preview = ctk.CTkLabel(n, text="会议纪要 · 2026.06.22 · 张三 · v1.0.pdf",
+                                        font=FONT_MONO, text_color=COLOR_MUTED)
+        self.tpl_preview.pack(side="left", padx=(8, 4), pady=8)
+        ctk.CTkLabel(n, text="🔒 纯本地 · 不上云",
+                     font=("", 11, "bold"), text_color=COLOR_SUCCESS
+                     ).pack(side="right", padx=(4, 16), pady=8)
 
         # 日志标题
         ctk.CTkLabel(f, text="📋 活动日志",
@@ -366,24 +390,7 @@ class FileBrainApp:
                         variable=self.av, font=FONT_BODY,
                         fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK
                         ).pack(anchor="w", padx=20, pady=2)
-        # 命名格式
-        ctk.CTkLabel(c1, text="命名格式：", font=FONT_BODY,
-                     text_color=COLOR_TEXT
-                     ).pack(anchor="w", padx=20, pady=(8, 2))
-        TEMPLATES = ["摘要 · 日期 · 作者 · 版本", "日期 · 摘要",
-                     "摘要 · 日期 · 版本", "摘要_日期_版本", "日期_摘要"]
-        self.tpl_var = ctk.StringVar(value=TEMPLATES[0])
-        ctk.CTkOptionMenu(c1, values=TEMPLATES, variable=self.tpl_var,
-                          font=FONT_BODY, height=32,
-                          fg_color="#f0ede8",
-                          button_color=COLOR_ACCENT,
-                          button_hover_color=COLOR_ACCENT_DARK,
-                          dropdown_font=FONT_BODY
-                          ).pack(anchor="w", padx=20, pady=(2, 4))
-        self.tpl_preview = ctk.CTkLabel(c1,
-            text="示例: 会议纪要 · 2026.06.22 · 张三 · v1.0.pdf",
-            font=FONT_MONO, text_color=COLOR_MUTED)
-        self.tpl_preview.pack(anchor="w", padx=20, pady=(0, 14))
+        # 命名格式在主页设置（自动整理页顶部）
 
         # 开源卡片 —— 质感背景
         s = ctk.CTkFrame(f, fg_color=COLOR_TEXTURE_1, corner_radius=12,
