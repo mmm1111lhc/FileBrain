@@ -59,7 +59,7 @@ class FileBrainHandler(FileSystemEventHandler):
             return
         self._handle_file(event.dest_path)
 
-    def _handle_file(self, file_path: str):
+    def _handle_file(self, file_path: str, skip_wait: bool = False):
         path = Path(file_path)
         ext = path.suffix.lower()
 
@@ -74,8 +74,9 @@ class FileBrainHandler(FileSystemEventHandler):
         self._dedup.add(file_path)
 
         try:
-            # 等待文件写入完成
-            time.sleep(FILE_WRITE_WAIT_SECONDS)
+            # 扫描已有文件不用等写入
+            if not skip_wait:
+                time.sleep(FILE_WRITE_WAIT_SECONDS)
             if not path.exists():
                 return
             self._process_or_queue(file_path)
@@ -243,20 +244,23 @@ class FileBrainHandler(FileSystemEventHandler):
         return ""
 
     def scan_existing(self):
-        """扫描目录中已有的文件（含子目录）"""
+        """快速扫描根目录已有文件（不递归子目录、不等写入）"""
         logger.info("扫描已有文件...")
+        count = 0
         for ext in SUPPORTED_EXTENSIONS:
-            for f in self.watch_dir.rglob(f"*{ext}"):
+            for f in self.watch_dir.glob(f"*{ext}"):
                 if f.is_file():
-                    self._handle_file(str(f))
-        # 也处理大写扩展名
+                    self._handle_file(str(f), skip_wait=True)
+                    count += 1
+        # 大写扩展名
         for ext in list(SUPPORTED_EXTENSIONS):
             upper_ext = ext.upper()
             if upper_ext != ext:
-                for f in self.watch_dir.rglob(f"*{upper_ext}"):
+                for f in self.watch_dir.glob(f"*{upper_ext}"):
                     if f.is_file():
-                        self._handle_file(str(f))
-        logger.info("已有文件扫描完成")
+                        self._handle_file(str(f), skip_wait=True)
+                        count += 1
+        logger.info(f"已有文件扫描完成，共扫描 {count} 个文件")
 
 
 class Watcher:
