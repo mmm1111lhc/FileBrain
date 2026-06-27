@@ -245,22 +245,25 @@ class FileBrainHandler(FileSystemEventHandler):
 
     def scan_existing(self):
         """快速扫描根目录已有文件（不递归子目录、不等写入）"""
-        logger.info("扫描已有文件...")
-        count = 0
+        # 先快速统计文件数
+        files = []
         for ext in SUPPORTED_EXTENSIONS:
-            for f in self.watch_dir.glob(f"*{ext}"):
-                if f.is_file():
-                    self._handle_file(str(f), skip_wait=True)
-                    count += 1
-        # 大写扩展名
-        for ext in list(SUPPORTED_EXTENSIONS):
-            upper_ext = ext.upper()
-            if upper_ext != ext:
-                for f in self.watch_dir.glob(f"*{upper_ext}"):
-                    if f.is_file():
-                        self._handle_file(str(f), skip_wait=True)
-                        count += 1
-        logger.info(f"已有文件扫描完成，共扫描 {count} 个文件")
+            files.extend(self.watch_dir.glob(f"*{ext}"))
+            upper = ext.upper()
+            if upper != ext:
+                files.extend(self.watch_dir.glob(f"*{upper}"))
+        total = sum(1 for f in files if f.is_file())
+        if total == 0:
+            logger.info("扫描完成，未发现待处理文件")
+            return
+
+        logger.info(f"发现 {total} 个文件，开始处理...")
+        count = 0
+        for f in files:
+            if f.is_file():
+                self._handle_file(str(f), skip_wait=True)
+                count += 1
+        logger.info(f"扫描完成，已处理 {count}/{total} 个文件")
 
 
 class Watcher:

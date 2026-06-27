@@ -422,13 +422,13 @@ class FileBrainApp:
                 return
             self.watcher = Watcher(wd, on_processed=self._on_proc)
             threading.Thread(target=self._start_w, daemon=True).start()
-            self._log(f"正在启动: {wd}")
+            self._log("正在扫描桌面文件...")
 
     def _start_w(self):
         """先更新UI状态再开始扫描（扫描在后台执行）"""
         self.root.after(0, self._started)
         self.watcher.start()
-        self.root.after(0, self._log, "✅ 扫描完成，正在监控文件变化")
+        self.root.after(0, self._log, "✅ 扫描完成，新文件出现将自动整理")
 
     def _started(self):
         self.btn_start.configure(text="⏹  停止整理", fg_color=COLOR_ERROR, state="normal")
