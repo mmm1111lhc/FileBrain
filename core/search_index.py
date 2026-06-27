@@ -91,6 +91,9 @@ class SearchIndex:
             return []
 
         query_lower = query.lower()
+        # 同时搜索"年创收"和"年 创 收"（兼容OCR空格问题）
+        query_flex = re.sub(r"([\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])", r"\1", query_lower)
+        query_spaced = re.sub(r"(?<=[\u4e00-\u9fff])(?=[\u4e00-\u9fff])", " ", query_lower)
         results = []
 
         for entry in self._index:
@@ -101,18 +104,22 @@ class SearchIndex:
             new_name = entry.get("new_name", "")
 
             # 文件名匹配（权重高）
-            if query_lower in fname.lower():
+            if query_flex in fname.lower():
                 score += 10
-            if query_lower in new_name.lower():
+            if query_flex in new_name.lower():
                 score += 8
 
-            # 标题匹配
-            if query_lower in title.lower():
+            # 标题匹配（兼容OCR空格）
+            if query_flex in title.lower() or query_lower in title.lower():
                 score += 5
-
-            # 内容匹配
-            if query_lower in snippet.lower():
+            if query_spaced in title.lower():
                 score += 3
+
+            # 内容匹配（兼容OCR空格）
+            if query_flex in snippet.lower() or query_lower in snippet.lower():
+                score += 3
+            if query_spaced in snippet.lower():
+                score += 2
 
             if score > 0:
                 # 高亮上下文：找到匹配位置并截取周围文本
