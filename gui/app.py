@@ -370,6 +370,7 @@ class FileBrainApp:
 
         ab = ctk.CTkFrame(f, fg_color="transparent")
         ab.grid(row=3, column=0, sticky="ew", pady=(6, 2))
+        ab.grid_columnconfigure(2, weight=1)
         ctk.CTkButton(ab, text="🔄 刷新",
                       command=self._j_refresh,
                       fg_color="transparent",
@@ -379,6 +380,15 @@ class FileBrainApp:
                       border_width=1, border_color=COLOR_ACCENT,
                       font=FONT_BODY
                       ).grid(row=0, column=0, sticky="w")
+        ctk.CTkButton(ab, text="👤 管理联系人",
+                      command=self._manage_contacts,
+                      fg_color="transparent",
+                      text_color=COLOR_ACCENT,
+                      hover_color=COLOR_TEXTURE_1,
+                      height=34, corner_radius=8,
+                      border_width=1, border_color=COLOR_ACCENT,
+                      font=FONT_BODY
+                      ).grid(row=0, column=1, padx=(6, 0))
 
     # ═══════════════ 设置 ═══════════════
 
@@ -571,6 +581,76 @@ class FileBrainApp:
         self.je.delete(0, "end")
         self._j_search()
 
+    def _manage_contacts(self):
+        """打开联系人管理对话框"""
+        if not self.watcher:
+            messagebox.showinfo("提示", "请先启动自动整理")
+            return
+        contacts = self.watcher.send_journal.get_contacts()
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("👤 管理联系人")
+        dialog.geometry("400x350")
+        dialog.configure(fg_color=COLOR_GLASS_BG)
+
+        ctk.CTkLabel(dialog, text="👤 常用联系人",
+                     font=FONT_SECTION, text_color=COLOR_TEXT
+                     ).pack(padx=20, pady=(14, 8), anchor="w")
+
+        frame = ctk.CTkScrollableFrame(dialog, fg_color="transparent",
+                                       height=200)
+        frame.pack(padx=16, fill="both", expand=True)
+
+        def refresh_contacts():
+            for w in frame.winfo_children():
+                w.destroy()
+            for c in contacts:
+                row = ctk.CTkFrame(frame, fg_color=COLOR_CARD,
+                                   corner_radius=8, height=36)
+                row.pack(fill="x", pady=2)
+                ctk.CTkLabel(row, text=f"{c['name']}",
+                             font=FONT_BODY).pack(side="left", padx=10)
+                if c.get("department"):
+                    ctk.CTkLabel(row, text=f"({c['department']})",
+                                 font=FONT_BODY, text_color=COLOR_MUTED
+                                 ).pack(side="left", padx=4)
+                ctk.CTkLabel(row, text=c.get("method",""),
+                             font=FONT_BODY, text_color=COLOR_MUTED
+                             ).pack(side="left", padx=4)
+                def make_del(n):
+                    return lambda: (self.watcher.send_journal.delete_contact(n),
+                                    refresh_contacts())
+                ctk.CTkButton(row, text="✕", width=28, height=28,
+                              fg_color="transparent", text_color=COLOR_ERROR,
+                              hover_color="#ffebee",
+                              command=make_del(c["name"])
+                              ).pack(side="right", padx=4)
+        refresh_contacts()
+
+        # 新增联系人行
+        add_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        add_frame.pack(padx=16, pady=(8, 14), fill="x")
+        name_e = ctk.CTkEntry(add_frame, placeholder_text="姓名",
+                              font=FONT_BODY, height=32, width=120,
+                              fg_color="#f0ede8", border_width=0)
+        name_e.pack(side="left", padx=(0, 4))
+        dept_e = ctk.CTkEntry(add_frame, placeholder_text="部门",
+                              font=FONT_BODY, height=32, width=120,
+                              fg_color="#f0ede8", border_width=0)
+        dept_e.pack(side="left", padx=4)
+        def add_contact():
+            n = name_e.get().strip()
+            if n:
+                self.watcher.send_journal.add_contact(n, dept_e.get().strip())
+                contacts = self.watcher.send_journal.get_contacts()
+                refresh_contacts()
+                name_e.delete(0, "end")
+                dept_e.delete(0, "end")
+        ctk.CTkButton(add_frame, text="＋添加", command=add_contact,
+                      fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
+                      height=32, width=80, corner_radius=6,
+                      text_color="white", font=("", 12, "bold")
+                      ).pack(side="left", padx=4)
+
     def _on_close(self):
         if self.watcher and self.watcher.is_running():
             self.watcher.stop()
@@ -601,10 +681,25 @@ class SendDialog:
         ctk.CTkLabel(self.top, text="接收人 *", font=FONT_BODY,
                      text_color=COLOR_TEXT
                      ).pack(padx=20, pady=(4, 2), anchor="w")
-        self.r = ctk.CTkEntry(self.top, font=FONT_BODY, height=34,
-                              fg_color="#f0ede8", border_width=0,
-                              corner_radius=6)
+        # 加载联系人列表
+        try:
+            contacts = journal.get_contacts()
+            contact_names = [c["name"] for c in contacts] if contacts else ["添加联系人..."]
+        except:
+            contact_names = ["添加联系人..."]
+        self.r = ctk.CTkComboBox(self.top, values=contact_names,
+                                 font=FONT_BODY, height=34,
+                                 fg_color="#f0ede8", border_width=0,
+                                 corner_radius=6)
         self.r.pack(padx=20, fill="x")
+        # 新增联系人按钮
+        ctk.CTkLabel(self.top, text="部门/备注：", font=FONT_BODY,
+                     text_color=COLOR_TEXT
+                     ).pack(padx=20, pady=(4, 2), anchor="w")
+        self.r_dept = ctk.CTkEntry(self.top, font=FONT_BODY, height=30,
+                                   fg_color="#f0ede8", border_width=0,
+                                   corner_radius=6)
+        self.r_dept.pack(padx=20, fill="x")
 
         ctk.CTkLabel(self.top, text="发送方式", font=FONT_BODY,
                      text_color=COLOR_TEXT
@@ -636,6 +731,12 @@ class SendDialog:
         if not r:
             messagebox.showwarning("提示", "请填写接收人", parent=self.top)
             return
+        # 如果是新联系人，自动保存
+        contacts = self.j.get_contacts()
+        if r not in [c["name"] for c in contacts]:
+            dept = self.r_dept.get().strip() if hasattr(self, 'r_dept') else ""
+            if messagebox.askyesno("保存联系人", f"是否将「{r}」保存为常用联系人？", parent=self.top):
+                self.j.add_contact(r, dept)
         self.j.add_record(self.fp, Path(self.fp).name,
                           r, self.m.get(), "")
         self.cb()

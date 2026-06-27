@@ -103,3 +103,47 @@ class SendJournal:
     def get_all_files_sent(self) -> set:
         """获取所有有发送记录的文件路径"""
         return {r.get("file_path") for r in self._records}
+
+    # ── 联系人管理 ──
+    CONTACTS_FILE = "contacts.json"
+
+    @property
+    def contacts_file(self):
+        return self.state_dir / self.CONTACTS_FILE
+
+    def get_contacts(self) -> list[dict]:
+        """获取已保存的联系人列表"""
+        f = self.contacts_file
+        if f.exists():
+            try:
+                with open(f, "r", encoding="utf-8") as fp:
+                    return json.load(fp)
+            except:
+                return []
+        return []
+
+    def add_contact(self, name: str, department: str = "",
+                    method: str = "微信 WeChat") -> dict:
+        """添加联系人"""
+        contacts = self.get_contacts()
+        # 去重（同名替换）
+        contacts = [c for c in contacts if c.get("name") != name]
+        contact = {"name": name, "department": department,
+                   "method": method, "created_at": time.time()}
+        contacts.append(contact)
+        self._ensure_dir()
+        with open(self.contacts_file, "w", encoding="utf-8") as fp:
+            json.dump(contacts, fp, ensure_ascii=False, indent=2)
+        return contact
+
+    def delete_contact(self, name: str) -> bool:
+        """删除联系人"""
+        contacts = self.get_contacts()
+        before = len(contacts)
+        contacts = [c for c in contacts if c.get("name") != name]
+        if len(contacts) < before:
+            self._ensure_dir()
+            with open(self.contacts_file, "w", encoding="utf-8") as fp:
+                json.dump(contacts, fp, ensure_ascii=False, indent=2)
+            return True
+        return False
