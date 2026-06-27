@@ -428,6 +428,7 @@ class FileBrainApp:
         """先更新UI状态再开始扫描（扫描在后台执行）"""
         self.root.after(0, self._started)
         self.watcher.start()
+        self.root.after(0, self._log, "✅ 扫描完成，正在监控文件变化")
 
     def _started(self):
         self.btn_start.configure(text="⏹  停止整理", fg_color=COLOR_ERROR, state="normal")
