@@ -346,6 +346,9 @@ class FileBrainApp:
         ctk.CTkLabel(bar, text="📤 发送留痕",
                      font=FONT_SECTION, text_color=COLOR_TEXT
                      ).grid(row=0, column=0, padx=(16, 4), pady=10)
+        self.j_verify = ctk.CTkLabel(bar, text="", font=FONT_MONO,
+                                      text_color=COLOR_SUCCESS)
+        self.j_verify.grid(row=0, column=3, padx=(8, 16), pady=8)
         self.je = ctk.CTkEntry(bar, font=FONT_BODY, height=34,
                                fg_color="#f0ede8", border_width=0,
                                corner_radius=6)
@@ -580,6 +583,19 @@ class FileBrainApp:
     def _j_refresh(self):
         self.je.delete(0, "end")
         self._j_search()
+        # 显示哈希校验状态
+        if self.watcher:
+            v = self.watcher.send_journal.verify_all()
+            if v["tampered"] > 0:
+                self.j_verify.configure(
+                    text=f"⚠ {v['tampered']}条记录已被篡改",
+                    text_color=COLOR_ERROR)
+            elif v["total"] > 0:
+                self.j_verify.configure(
+                    text=f"🔒 {v['total']}条记录完好",
+                    text_color=COLOR_SUCCESS)
+            else:
+                self.j_verify.configure(text="")
 
     def _manage_contacts(self):
         """打开联系人管理对话框"""

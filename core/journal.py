@@ -2,6 +2,7 @@
 
 import json
 import time
+import hashlib
 import logging
 from pathlib import Path
 
@@ -51,9 +52,11 @@ class SendJournal:
     def add_record(self, file_path: str, file_name: str,
                    recipient: str, method: str,
                    notes: str = "") -> dict:
-        """添加一条发送记录"""
+        """添加一条发送记录（含哈希校验）"""
+        raw = f"{file_path}|{file_name}|{recipient}|{method}|{notes}|{time.time()}"
+        record_hash = hashlib.sha256(raw.encode()).hexdigest()[:16]
         record = {
-            "id": int(time.time() * 1000),  # 毫秒时间戳作 ID
+            "id": int(time.time() * 1000),
             "file_path": str(Path(file_path).absolute()),
             "file_name": file_name,
             "recipient": recipient.strip(),
@@ -61,10 +64,26 @@ class SendJournal:
             "notes": notes.strip(),
             "sent_at": time.time(),
             "sent_at_str": time.strftime("%Y-%m-%d %H:%M"),
+            "_hash": record_hash,
         }
-        self._records.insert(0, record)  # 最新的在前
+        self._records.insert(0, record)
         self._save()
         return record
+
+    def verify_record(self, record: dict) -> bool:
+        """验证一条记录的哈希是否匹配（检测是否被篡改）"""
+        stored_hash = record.get("_hash", "")
+        if not stored_hash:
+            return False
+        raw = f"{record['file_path']}|{record['file_name']}|{record['recipient']}|{record['method']}|{record['notes']}|{record['sent_at']}"
+        calc_hash = hashlib.sha256(raw.encode()).hexdigest()[:16]
+        return stored_hash == calc_hash
+
+    def verify_all(self) -> dict:
+        """验证所有记录，返回 {total, ok, tampered}"""
+        total = len(self._records)
+        ok = sum(1 for r in self._records if self.verify_record(r))
+        return {"total": total, "ok": ok, "tampered": total - ok}
 
     def delete_record(self, record_id: int) -> bool:
         """删除一条发送记录"""
