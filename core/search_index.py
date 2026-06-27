@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from pathlib import Path
 
 from config import STATE_DIR_NAME
@@ -45,7 +46,7 @@ class SearchIndex:
             logger.error(f"保存搜索索引失败: {e}")
 
     def add(self, file_path: str, new_name: str, extracted: dict):
-        """将文件内容加入索引"""
+        """将文件内容加入索引（自动修复OCR中文间空格）"""
         path = Path(file_path)
         abs_path = str(path.absolute())
 
@@ -53,13 +54,21 @@ class SearchIndex:
         self._index = [r for r in self._index
                        if r.get("path") != abs_path]
 
+        # 修复OCR中文间空格："年 创 收" → "年创收"
+        def fix_cn_spaces(t):
+            return re.sub(r"([\u4e00-\u9fff])\s+(?=[\u4e00-\u9fff])", r"\1", t)
+        raw_text = extracted.get("text", "")
+        raw_title = extracted.get("title", "")
+        fixed_text = fix_cn_spaces(raw_text)
+        fixed_title = fix_cn_spaces(raw_title)
+
         entry = {
             "path": abs_path,
             "file_name": path.name,
             "new_name": new_name,
-            "extracted_title": extracted.get("title", ""),
-            "text_snippet": extracted.get("text", "")[:200],  # 索引片段
-            "full_text_hash": hash(extracted.get("text", "")),
+            "extracted_title": fixed_title,
+            "text_snippet": fixed_text[:200],
+            "full_text_hash": hash(fixed_text),
             "indexed_at": __import__("time").time(),
         }
         self._index.append(entry)
