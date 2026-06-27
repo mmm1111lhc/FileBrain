@@ -38,17 +38,17 @@ logger = logging.getLogger("FileBrain")
 
 
 def _make_gradient(w=900, h=700):
-    """快速生成从上到下的渐变背景图"""
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    """快速渐变背景（小图拉伸，减少像素量）"""
+    sw, sh = max(4, w//64), max(4, h//64)
+    img = Image.new("RGBA", (sw, sh), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    step = max(1, h // 32)
-    for y in range(0, h, step):
-        p = y / h
+    for y in range(sh):
+        p = y / sh
         r = int(243 - p * 10)
         g = int(239 - p * 12)
         b = int(232 - p * 10)
-        draw.rectangle([(0, y), (w, min(y + step, h))], fill=(r, g, b, 255))
-    return img
+        draw.line([(0, y), (sw, y)], fill=(r, g, b, 255))
+    return img.resize((w, h), Image.NEAREST)
 
 
 class FileBrainApp:
