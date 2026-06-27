@@ -20,6 +20,7 @@ from core.namer import build_new_filename
 from core.version import VersionManager
 from core.search_index import SearchIndex
 from core.pending import PendingQueue
+from core.journal import SendJournal
 
 logger = logging.getLogger(__name__)
 
@@ -270,6 +271,7 @@ class Watcher:
             watch_dir, self.version_mgr,
             self.search_index, on_processed
         )
+        self.send_journal = SendJournal(watch_dir)
         self._observer = Observer()
         self._running = False
 

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FileBrain · 6层设计预览</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+/* 外层渐变基底 */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  background: linear-gradient(180deg, #f3efe8 0%, #eae4d8 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+/* 毛玻璃主容器 */
+.glass {
+  width: 860px;
+  background: rgba(250, 248, 245, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow:
+    0 2px 4px rgba(60,40,20,0.04),
+    0 8px 24px rgba(60,40,20,0.08),
+    0 24px 48px rgba(60,40,20,0.06);
+  overflow: hidden;
+  position: relative;
+}
+
+/* 质感层1: 顶部装饰条 */
+.texture-top {
+  height: 3px;
+  background: linear-gradient(90deg, #e8e0d4 0%, #dcd2c2 50%, #e8e0d4 100%);
+}
+
+/* 质感层2: 底部阴影条 */
+.texture-bottom {
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, #dcd2c2 20%, #dcd2c2 80%, transparent 100%);
+  margin-top: 0;
+}
+
+/* 内容区 */
+.content { padding: 20px 24px 16px; }
+
+/* 标题栏 */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.logo { font-size: 28px; }
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(180deg, #c97a3a 0%, #a8612a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.title-sub {
+  font-size: 22px;
+  font-weight: 700;
+  color: #2c2418;
+}
+.tagline {
+  font-size: 12px;
+  color: #8a7e72;
+  margin-left: 12px;
+  margin-top: 4px;
+}
+
+.sep {
+  height: 1px;
+  background: #dcd2c2;
+  margin: 2px 0 12px;
+}
+
+/* Tab 导航 */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.tab {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2c2418;
+  cursor: default;
+  background: transparent;
+}
+.tab.active {
+  background: #c97a3a;
+  color: white;
+  box-shadow: 0 2px 8px rgba(201,122,58,0.25);
+}
+
+/* 卡片样式（含阴影层） */
+.card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e8e0d4;
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  box-shadow:
+    0 1px 3px rgba(60,40,20,0.04),
+    0 4px 12px rgba(60,40,20,0.06);
+  position: relative;
+}
+/* 质感层3: 卡片内部极淡内阴影 */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 5%, rgba(255,255,255,0.8) 50%, transparent 95%);
+  border-radius: 12px 12px 0 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 输入框 */
+.input {
+  flex: 1;
+  padding: 8px 12px;
+  background: #f0ede8;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #2c2418;
+  outline: none;
+}
+
+/* 按钮 */
+.btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+}
+.btn-primary {
+  background: #c97a3a;
+  color: white;
+  box-shadow: 0 2px 6px rgba(201,122,58,0.3);
+}
+.btn-outline {
+  background: transparent;
+  color: #c97a3a;
+  border: 1px solid #c97a3a;
+}
+
+/* 标签区 */
+.tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+}
+.tag {
+  background: #f0ede8;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #5a4a3a;
+}
+.tag input { accent-color: #c97a3a; margin-right: 4px; }
+
+/* 日志标题 */
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2c2418;
+  margin-bottom: 4px;
+}
+
+/* 日志框（双边框阴影） */
+.log-outer {
+  background: #e8e0d4;
+  border-radius: 12px;
+  padding: 2px;
+}
+.log-inner {
+  background: white;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 120px;
+  font-family: "Menlo", monospace;
+  font-size: 11px;
+  color: #5a4a3a;
+  line-height: 1.8;
+}
+.log-line { color: #8a7e72; }
+.log-line span { color: #2c2418; }
+
+/* 设置页 */
+.settings-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e8e0d4;
+  padding: 16px 20px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(60,40,20,0.04);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c2418;
+  margin-bottom: 8px;
+}
+.open-source {
+  background: #e8e0d4;
+  border-radius: 12px;
+  padding: 2px;
+  margin-bottom: 8px;
+}
+.open-source-inner {
+  background: rgba(250,248,245,0.9);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.open-source-inner p { color: #c97a3a; font-weight: 700; font-size: 14px; }
+.open-source-inner small { color: #a8612a; font-family: monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="glass">
+  <div class="texture-top"></div>
+
+  <div class="content">
+    <!-- 标题 -->
+    <div class="header">
+      <span class="logo">🧠</span>
+      <span class="title">FileBrain</span>
+      <span class="title-sub">· 文件大脑</span>
+      <span class="tagline">文件扔桌面，自动整理好</span>
+    </div>
+    <div class="sep"></div>
+
+    <!-- Tab -->
+    <div class="tabs">
+      <div class="tab active">📁 自动整理</div>
+      <div class="tab">🔍 全文检索</div>
+      <div class="tab">📤 发送留痕</div>
+      <div class="tab">⚙️ 设置</div>
+    </div>
+
+    <!-- 路径行 -->
+    <div class="card">
+      <div class="row">
+        <span>📂 管理文件夹</span>
+        <input class="input" value="~/Desktop" readonly>
+        <button class="btn btn-primary" style="width:70px;">选择</button>
+      </div>
+    </div>
+
+    <!-- 按钮行 -->
+    <div class="card">
+      <div class="row">
+        <button class="btn btn-primary">▶  开始整理</button>
+        <button class="btn btn-outline">🔄 扫描现有文件</button>
+        <span style="flex:1;"></span>
+        <span style="font-size:12px;color:#8a7e72;">⏸ 就绪</span>
+      </div>
+    </div>
+
+    <!-- 类型标签 -->
+    <div class="card">
+      <div class="tags">
+        <span style="font-size:13px;color:#2c2418;margin-right:8px;">识别类型：</span>
+        <label class="tag"><input type="checkbox" checked> PDF (含扫描件)</label>
+        <label class="tag"><input type="checkbox" checked> Word</label>
+        <label class="tag"><input type="checkbox" checked> Excel</label>
+        <label class="tag"><input type="checkbox" checked> 图片 (OCR)</label>
+      </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="section-title">📋 活动日志</div>
+    <div class="log-outer">
+      <div class="log-inner">
+        <div class="log-line"><span style="color:#8a7e72;">[</span><span style="color:#5a8f5a;">14:30:02</span><span style="color:#8a7e72;">]</span> <span>FileBrain 已开始监控: ~/Desktop</span></div>
+        <div class="log-line"><span style="color:#8a7e72;">[14:30:05]</span> 扫描完成，已索引 12 个文件</div>
+        <div class="log-line"><span style="color:#8a7e72;">[14:31:18]</span> [已完成] 审批回执.pdf → 建设工程规划许可证_20260622_张三_v1.0.pdf</div>
+        <div class="log-line" style="color:#b85450;">[14:32:00] [提取失败] 临时文件.tmp</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="texture-bottom"></div>
+</div>
+
+<!-- 第二张：设置页预览 -->
+<div class="glass" style="margin-top:24px;">
+  <div class="texture-top"></div>
+  <div class="content">
+    <div class="header">
+      <span style="font-size:18px;font-weight:700;">⚙️ 设置</span>
+    </div>
+    <div class="sep"></div>
+
+    <div class="settings-card">
+      <div class="card-title">📐 智能命名</div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;">
+        <input type="checkbox" checked style="accent-color:#c97a3a;"> 自动重命名文件（内容摘要 · 日期 · 作者）
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;">
+        <input type="checkbox" checked style="accent-color:#c97a3a;"> 文件修改后自动标注版本号 (v1.0)
+      </label>
+      <div style="font-size:11px;color:#8a7e72;font-family:monospace;padding-top:4px;">
+        格式: 内容摘要 · 2026.06.22 · 作者 · v1.0.pdf
+      </div>
+    </div>
+
+    <div class="open-source">
+      <div class="open-source-inner">
+        <p>⬇ 免费开源 · 欢迎下载 ⬇</p>
+        <small>github.com/mmm1111lhc/FileBrain</small>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="card-title">ℹ️ 关于</div>
+      <div style="font-size:13px;color:#2c2418;line-height:1.7;">
+        FileBrain · 文件大脑 v1.0<br><br>
+        🔒 纯本地 · 不过云<br>
+        所有文件在本地处理，数据不上传云端<br><br>
+        📄 支持 PDF(含OCR) · Word · Excel · 图片
+      </div>
+    </div>
+  </div>
+  <div class="texture-bottom"></div>
+</div>
+
+<div style="text-align:center;margin:24px;color:#8a7e72;font-size:12px;">
+  6层设计预览 · 截图即可导入 Figma
+</div>
+
+</body>
+</html>

@@ -4,12 +4,11 @@ import os
 import time
 import threading
 import logging
-import math
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
-from PIL import Image, ImageDraw, ImageFilter, ImageTk, ImageFont
+from PIL import Image, ImageDraw, ImageTk
 
 # ── 主题 ──
 ctk.set_appearance_mode("light")
@@ -37,43 +36,19 @@ FONT_MONO = ("Menlo", 11)
 
 logger = logging.getLogger("FileBrain")
 
-# ── 工具函数: 生成阴影图片（缓存） ──
-_shadow_cache = {}
 
-def _make_shadow(w, h, radius=12, alpha=40, offset=(0, 4)):
-    """生成带圆角的阴影PNG"""
-    key = (w, h, radius, alpha, offset)
-    if key in _shadow_cache:
-        return _shadow_cache[key]
-    # 阴影图比目标大一圈
-    pad = radius + abs(offset[1]) + 4
-    iw, ih = w + pad * 2, h + pad * 2
-    img = Image.new("RGBA", (iw, ih), (0, 0, 0, 0))
+def _make_gradient(w=900, h=700):
+    """快速生成从上到下的渐变背景图"""
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    # 圆角矩形
-    draw.rounded_rectangle(
-        [pad + offset[0], pad + offset[1], pad + offset[0] + w, pad + offset[1] + h],
-        radius=radius, fill=(0, 0, 0, alpha)
-    )
-    img = img.filter(ImageFilter.GaussianBlur(radius=radius * 0.6))
-    _shadow_cache[key] = img
+    step = max(1, h // 32)
+    for y in range(0, h, step):
+        p = y / h
+        r = int(243 - p * 10)
+        g = int(239 - p * 12)
+        b = int(232 - p * 10)
+        draw.rectangle([(0, y), (w, min(y + step, h))], fill=(r, g, b, 255))
     return img
-
-
-class GlassCard(ctk.CTkFrame):
-    """自定义毛玻璃卡片 —— 6层质感（阴影层+毛玻璃+质感层1+2+卡片+文字）"""
-
-    def __init__(self, master, **kwargs):
-        super().__init__(master, fg_color="transparent", **kwargs)
-        self._shadow_img_ref = None   # 保持PIL引用
-
-    def _place_shadow(self, w, h):
-        """底层: 生成并放置阴影"""
-        shadow = _make_shadow(w, h, radius=14, alpha=35, offset=(0, 5))
-        self._shadow_img_ref = ImageTk.PhotoImage(shadow)
-        lbl = ctk.CTkLabel(self, image=self._shadow_img_ref, text="",
-                           fg_color="transparent")
-        lbl.place(x=-10, y=-5)
 
 
 class FileBrainApp:
@@ -91,13 +66,14 @@ class FileBrainApp:
         self.watch_dir = ctk.StringVar(value=os.path.expanduser("~/Desktop"))
         self.selected_file_path = ""
 
-        # ── 主体容器（毛玻璃效果） ──
+        # ── 主体容器 ──
         self.main_glass = ctk.CTkFrame(self.root, fg_color=COLOR_GLASS_BG,
                                        corner_radius=16, border_width=0)
         self.main_glass.pack(fill="both", expand=True, padx=16, pady=16)
 
-        # 质感层1: 薄渐变顶条
-        self._add_texture_bar(self.main_glass, COLOR_TEXTURE_1, 0, 0.3)
+        # 纹理分隔条
+        ctk.CTkFrame(self.main_glass, fg_color=COLOR_TEXTURE_1,
+                     height=2, corner_radius=0).pack(fill="x")
 
         # 标题区
         header = ctk.CTkFrame(self.main_glass, fg_color="transparent", height=52)
@@ -165,43 +141,25 @@ class FileBrainApp:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _set_bg_texture(self):
-        """用PIL生成渐变背景图"""
-        w, h = 900, 700
-        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        for y in range(h):
-            progress = y / h
-            r = int(243 - progress * 10)
-            g = int(239 - progress * 12)
-            b = int(232 - progress * 10)
-            draw.line([(0, y), (w, y)], fill=(r, g, b, 255))
-        self._bg_img = ImageTk.PhotoImage(img)
-        # 不能用直接设置，用label垫底
-        lbl = ctk.CTkLabel(self.root, image=self._bg_img, text="",
-                           fg_color="transparent")
+        """快速渐变背景"""
+        img = _make_gradient(900, 700)
+        bg_img = ctk.CTkImage(light_image=img, dark_image=img, size=(900, 700))
+        lbl = ctk.CTkLabel(self.root, image=bg_img, text="")
         lbl.place(x=0, y=0, relwidth=1, relheight=1)
-        # 背景透明让渐变露出来
-        self.root.configure(fg_color="transparent")
-
-    def _add_texture_bar(self, parent, color, y_frac, height_frac):
-        """质感层：薄渐变条"""
-        bar = ctk.CTkFrame(parent, fg_color=color, height=1,
-                          corner_radius=0, border_width=0)
-        bar.pack(fill="x", padx=0, pady=0)
-        return bar
+        lbl.lower()  # 推到最底层，不遮挡其他控件
+        self.root.configure(fg_color=COLOR_PAGE_BG)
 
     # ═══════════════ 自动整理 ═══════════════
 
     def _build_organize(self, f):
         f.grid_columnconfigure(0, weight=1)
-        f.grid_rowconfigure(5, weight=1)
+        f.grid_rowconfigure(4, weight=1)
 
         # 路径行
         p = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                          border_width=1, border_color=COLOR_BORDER_SUBTLE)
-        p.grid(row=0, column=0, sticky="ew", pady=4)
+        p.grid(row=0, column=0, sticky="ew", pady=3)
         p.grid_columnconfigure(1, weight=1)
-        # 模拟内阴影: 上边框用浅色
         ctk.CTkLabel(p, text="📂 管理文件夹",
                      font=FONT_BODY, text_color=COLOR_TEXT
                      ).grid(row=0, column=0, padx=(16, 4), pady=10)
@@ -219,7 +177,7 @@ class FileBrainApp:
 
         # 按钮行
         b = ctk.CTkFrame(f, fg_color="transparent")
-        b.grid(row=1, column=0, sticky="ew", pady=(6, 2))
+        b.grid(row=1, column=0, sticky="ew", pady=(4, 2))
         b.grid_columnconfigure(2, weight=1)
         self.btn_start = ctk.CTkButton(
             b, text="▶  开始整理",
@@ -245,50 +203,37 @@ class FileBrainApp:
         )
         self.status_label.grid(row=0, column=2, sticky="e", padx=(12, 0))
 
-        # 类型标签行
+        # 类型行
         t = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=10,
                          border_width=1, border_color=COLOR_BORDER_SUBTLE)
-        t.grid(row=2, column=0, sticky="ew", pady=4)
-        t.grid_columnconfigure(5, weight=1)
+        t.grid(row=2, column=0, sticky="ew", pady=3)
         ctk.CTkLabel(t, text="识别类型：",
                      font=FONT_BODY, text_color=COLOR_TEXT
-                     ).grid(row=0, column=0, padx=(16, 4), pady=8)
+                     ).pack(side="left", padx=(16, 4), pady=8)
         self.pdf = ctk.BooleanVar(value=True)
         self.word = ctk.BooleanVar(value=True)
         self.excel = ctk.BooleanVar(value=True)
         self.img = ctk.BooleanVar(value=True)
-        for i, (txt, var) in enumerate([
-            ("PDF (含扫描件)", self.pdf),
-            ("Word", self.word),
-            ("Excel", self.excel),
-            ("图片 (OCR)", self.img),
-        ]):
+        for txt, var in [("PDF (含扫描件)", self.pdf), ("Word", self.word),
+                         ("Excel", self.excel), ("图片 (OCR)", self.img)]:
             ctk.CTkCheckBox(t, text=txt, variable=var,
-                            fg_color=COLOR_ACCENT,
-                            hover_color=COLOR_ACCENT_DARK,
+                            fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
                             font=FONT_BODY
-                            ).grid(row=0, column=1 + i, padx=6, pady=8)
+                            ).pack(side="left", padx=6, pady=8)
 
-        # 活动日志标题带质感底
-        log_header = ctk.CTkFrame(f, fg_color="transparent", height=24)
-        log_header.grid(row=3, column=0, sticky="ew", pady=(8, 2))
-        ctk.CTkLabel(log_header, text="📋 活动日志",
+        # 日志标题
+        ctk.CTkLabel(f, text="📋 活动日志",
                      font=FONT_SECTION, text_color=COLOR_TEXT
-                     ).pack(side="left")
+                     ).grid(row=3, column=0, sticky="nw", pady=(6, 2))
 
-        # 日志框（带阴影感：双边框）
-        log_outer = ctk.CTkFrame(f, fg_color=COLOR_TEXTURE_1,
-                                 corner_radius=12)
-        log_outer.grid(row=4, column=0, sticky="nsew", pady=(0, 4))
-        log_outer.grid_columnconfigure(0, weight=1)
-        log_outer.grid_rowconfigure(0, weight=1)
+        # 日志框（简化：单层卡片）
         self.log = ctk.CTkTextbox(
-            log_outer, font=FONT_MONO,
+            f, font=FONT_MONO,
             fg_color=COLOR_CARD, corner_radius=10,
-            border_width=0, height=140,
-            text_color=COLOR_TEXT
+            border_width=1, border_color=COLOR_BORDER_SUBTLE,
+            height=130, text_color=COLOR_TEXT
         )
-        self.log.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        self.log.grid(row=4, column=0, sticky="nsew", pady=(0, 2))
 
     # ═══════════════ 全文检索 ═══════════════
 
@@ -475,6 +420,11 @@ class FileBrainApp:
             if not os.path.isdir(wd):
                 messagebox.showerror("错误", f"目录不存在：{wd}")
                 return
+            # 先更新 UI 再启动
+            self.btn_start.configure(text="⏳ 启动中…", fg_color=COLOR_MUTED, state="disabled")
+            self.status_label.configure(text="⏳ 扫描中…", text_color=COLOR_MUTED)
+            self.root.update()
+            # 启动监控线程
             self.watcher = Watcher(wd, on_processed=self._on_proc)
             threading.Thread(target=self._start_w, daemon=True).start()
             self._log(f"正在启动: {wd}")
@@ -484,7 +434,7 @@ class FileBrainApp:
         self.root.after(0, self._started)
 
     def _started(self):
-        self.btn_start.configure(text="⏹  停止整理", fg_color=COLOR_ERROR)
+        self.btn_start.configure(text="⏹  停止整理", fg_color=COLOR_ERROR, state="normal")
         self.status_label.configure(text="🟢 整理中", text_color=COLOR_SUCCESS)
 
     def _on_proc(self, status, old, new, ver, date):
