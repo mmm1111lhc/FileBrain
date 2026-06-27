@@ -200,10 +200,20 @@ class FileBrainApp:
             border_width=1, border_color=COLOR_ACCENT,
             font=FONT_BODY
         ).grid(row=0, column=1, padx=(8, 0))
+        self.auto_mode_btn = ctk.CTkSegmentedButton(
+            b, values=["✨ 自动处理", "📋 手动确认"],
+            font=FONT_BODY, height=30,
+            selected_color=COLOR_ACCENT,
+            unselected_color=COLOR_TEXTURE_1,
+            selected_hover_color=COLOR_ACCENT_DARK,
+            fg_color=COLOR_TEXTURE_2
+        )
+        self.auto_mode_btn.set("✨ 自动处理")
+        self.auto_mode_btn.grid(row=0, column=2, padx=(8, 0))
         self.status_label = ctk.CTkLabel(
             b, text="⏸ 就绪", font=("", 12), text_color=COLOR_MUTED
         )
-        self.status_label.grid(row=0, column=2, sticky="e", padx=(12, 0))
+        self.status_label.grid(row=0, column=3, sticky="e", padx=(12, 0))
 
         # 类型行
         t = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=10,
@@ -444,7 +454,9 @@ class FileBrainApp:
             if not os.path.isdir(wd):
                 messagebox.showerror("错误", f"目录不存在：{wd}")
                 return
+            auto = self.auto_mode_btn.get() == "✨ 自动处理"
             self.watcher = Watcher(wd, on_processed=self._on_proc)
+            self.watcher.handler.auto_mode = auto
             threading.Thread(target=self._start_w, daemon=True).start()
             self._log("正在扫描桌面文件...")
 
