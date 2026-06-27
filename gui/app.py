@@ -201,7 +201,7 @@ class FileBrainApp:
             font=FONT_BODY
         ).grid(row=0, column=1, padx=(8, 0))
         self.auto_mode_btn = ctk.CTkSegmentedButton(
-            b, values=["✨ 自动处理", "📋 手动确认"],
+            b, values=["✨ 自动处理", "📋 手动处理"],
             font=FONT_BODY, height=30,
             selected_color=COLOR_ACCENT,
             unselected_color=COLOR_TEXTURE_1,
