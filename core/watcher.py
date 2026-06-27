@@ -1,4 +1,4 @@
-"""目录监控器 —— 监视文件夹变化，自动提取内容并重命名"""
+"""文件整理器 —— 监测文件夹变化，自动提取内容并重命名"""
 
 import os
 import time
@@ -296,16 +296,16 @@ class Watcher:
         )
         self._observer.start()
         self._running = True
-        logger.info(f"FileBrain 已开始监控: {self.watch_dir}")
+        logger.info(f"FileBrain 已开始整理: {self.watch_dir}")
 
     def stop(self):
-        """停止监控"""
+        """停止整理"""
         if not self._running:
             return
         self._observer.stop()
         self._observer.join()
         self._running = False
-        logger.info("FileBrain 已停止监控")
+        logger.info("FileBrain 已停止整理")
 
     def is_running(self) -> bool:
         return self._running
