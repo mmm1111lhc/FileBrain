@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
+import platform as _sys_platform
 import customtkinter as ctk
 from PIL import Image, ImageDraw, ImageTk
 
@@ -29,9 +30,10 @@ COLOR_SUCCESS = "#5a8f5a"
 COLOR_ERROR = "#b85450"
 COLOR_BORDER_SUBTLE = "#e8e0d4"    # 极淡边框
 
-FONT_TITLE = ("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", 20, "bold")
-FONT_SECTION = ("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", 15, "bold")
-FONT_BODY = ("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", 13)
+_FONT_FAMILY = "Microsoft YaHei" if _sys_platform.system() == "Windows" else "PingFang SC" if _sys_platform.system() == "Darwin" else "Noto Sans CJK SC"
+FONT_TITLE = (_FONT_FAMILY, 20, "bold")
+FONT_SECTION = (_FONT_FAMILY, 15, "bold")
+FONT_BODY = (_FONT_FAMILY, 13)
 FONT_MONO = ("Menlo", 11)
 
 logger = logging.getLogger("FileBrain")
