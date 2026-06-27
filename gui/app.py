@@ -429,6 +429,9 @@ class FileBrainApp:
         self.root.after(0, self._started)
         self.watcher.start()
         self.root.after(0, self._log, "✅ 扫描完成，有新文件放到桌面会自动整理")
+        # 完成时更新状态标签
+        self.root.after(100, lambda: self.status_label.configure(
+            text="✅ 扫描完成", text_color=COLOR_SUCCESS))
 
     def _started(self):
         self.btn_start.configure(text="⏹  停止整理", fg_color=COLOR_ERROR, state="normal")
