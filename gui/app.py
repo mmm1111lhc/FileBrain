@@ -617,9 +617,10 @@ class FileBrainApp:
         frame.pack(padx=16, fill="both", expand=True)
 
         def refresh_contacts():
+            fresh = self.watcher.send_journal.get_contacts()
             for w in frame.winfo_children():
                 w.destroy()
-            for c in contacts:
+            for c in fresh:
                 row = ctk.CTkFrame(frame, fg_color=COLOR_CARD,
                                    corner_radius=8, height=36)
                 row.pack(fill="x", pady=2)
