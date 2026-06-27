@@ -206,7 +206,8 @@ class FileBrainApp:
             selected_color=COLOR_ACCENT,
             unselected_color=COLOR_TEXTURE_1,
             selected_hover_color=COLOR_ACCENT_DARK,
-            fg_color=COLOR_TEXTURE_2
+            fg_color=COLOR_TEXTURE_2,
+            text_color="#2c2418"
         )
         self.auto_mode_btn.set("✨ 自动处理")
         self.auto_mode_btn.grid(row=0, column=2, padx=(8, 0))
