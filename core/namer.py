@@ -95,14 +95,13 @@ def build_new_filename(
     extracted: dict,
     version_str: str,
     date_str: str,
+    template: str = None,
 ) -> str:
     """
     构建美观的文件名
-
-    格式:
-      首次:     内容摘要 · 2026.06.22 · 作者.pdf
-      有修改:   内容摘要 · 2026.06.22 · 作者 · v1.0.pdf
+    支持自定义模板: {summary} {date} {author} {version}
     """
+    from config import NAMING_TEMPLATE
     ext = Path(old_name).suffix
     summary = generate_summary(extracted)
 
@@ -110,18 +109,21 @@ def build_new_filename(
         stem = Path(old_name).stem
         summary = sanitize_filename(stem)
 
-    # 格式化日期
     pretty_date = format_date(date_str)
-
-    # 作者标签
     author = get_author_tag(old_name, extracted, ext)
 
-    # 拼接
-    parts = [summary, pretty_date]
-    if author:
-        parts.append(author)
-    if version_str:
-        parts.append(version_str)
-
-    new_stem = SEP.join(parts)
+    # 使用模板
+    tpl = template or NAMING_TEMPLATE
+    new_stem = tpl.replace("{summary}", summary or "未命名") \
+                  .replace("{date}", pretty_date) \
+                  .replace("{author}", author or "") \
+                  .replace("{version}", version_str or "")
+    # 清理多余字符
+    new_stem = re.sub(r"·\s*·", "·", new_stem)
+    new_stem = re.sub(r"[·\s]*$", "", new_stem)
+    new_stem = re.sub(r"^[·\s]*", "", new_stem)
+    new_stem = re.sub(r"\s{2,}", " ", new_stem)
+    new_stem = new_stem.strip(" ·_-")
+    if not new_stem:
+        new_stem = summary or "未命名"
     return f"{new_stem}{ext}"

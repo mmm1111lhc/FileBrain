@@ -20,6 +20,9 @@ SUPPORTED_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif",
 }
 
+# 命名模板（用户可自定义） {summary} {date} {author} {version}
+NAMING_TEMPLATE = "{summary} · {date} · {author}{version}"
+
 # 命名配置
 SUMMARY_MAX_LENGTH = 50          # 文件名摘要最大字符数
 SUMMARY_MIN_LENGTH = 6           # 文件名摘要最小字符数

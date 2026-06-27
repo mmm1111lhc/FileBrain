@@ -357,18 +357,33 @@ class FileBrainApp:
                      font=FONT_SECTION, text_color=COLOR_TEXT
                      ).pack(anchor="w", padx=20, pady=(14, 6))
         self.ar = ctk.BooleanVar(value=True)
-        ctk.CTkCheckBox(c1, text="自动重命名文件（内容摘要 · 日期 · 作者）",
+        ctk.CTkCheckBox(c1, text="自动重命名文件",
                         variable=self.ar, font=FONT_BODY,
                         fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK
                         ).pack(anchor="w", padx=20, pady=2)
         self.av = ctk.BooleanVar(value=True)
-        ctk.CTkCheckBox(c1, text="文件修改后自动标注版本号 (v1.0)",
+        ctk.CTkCheckBox(c1, text="文件修改后自动标注版本号",
                         variable=self.av, font=FONT_BODY,
                         fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK
                         ).pack(anchor="w", padx=20, pady=2)
-        ctk.CTkLabel(c1, text="格式: 内容摘要 · 2026.06.22 · 作者 · v1.0.pdf",
-                     font=FONT_MONO, text_color=COLOR_MUTED
-                     ).pack(anchor="w", padx=20, pady=(4, 14))
+        # 命名格式
+        ctk.CTkLabel(c1, text="命名格式：", font=FONT_BODY,
+                     text_color=COLOR_TEXT
+                     ).pack(anchor="w", padx=20, pady=(8, 2))
+        TEMPLATES = ["摘要 · 日期 · 作者 · 版本", "日期 · 摘要",
+                     "摘要 · 日期 · 版本", "摘要_日期_版本", "日期_摘要"]
+        self.tpl_var = ctk.StringVar(value=TEMPLATES[0])
+        ctk.CTkOptionMenu(c1, values=TEMPLATES, variable=self.tpl_var,
+                          font=FONT_BODY, height=32,
+                          fg_color="#f0ede8",
+                          button_color=COLOR_ACCENT,
+                          button_hover_color=COLOR_ACCENT_DARK,
+                          dropdown_font=FONT_BODY
+                          ).pack(anchor="w", padx=20, pady=(2, 4))
+        self.tpl_preview = ctk.CTkLabel(c1,
+            text="示例: 会议纪要 · 2026.06.22 · 张三 · v1.0.pdf",
+            font=FONT_MONO, text_color=COLOR_MUTED)
+        self.tpl_preview.pack(anchor="w", padx=20, pady=(0, 14))
 
         # 开源卡片 —— 质感背景
         s = ctk.CTkFrame(f, fg_color=COLOR_TEXTURE_1, corner_radius=12,
