@@ -248,7 +248,7 @@ class FileBrainApp:
                      ).pack(side="right", padx=(4, 16), pady=8)
 
         # 日志标题
-        ctk.CTkLabel(f, text="📋 活动日志",
+        ctk.CTkLabel(f, text="📋 操作记录",
                      font=FONT_SECTION, text_color=COLOR_TEXT
                      ).grid(row=3, column=0, sticky="nw", pady=(6, 2))
 
