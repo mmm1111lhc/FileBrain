@@ -15,20 +15,21 @@ from PIL import Image, ImageDraw, ImageTk
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("dark-blue")
 
-# ── 淡薰衣草紫 · 超大圆角 · 柔阴影 ──
-COLOR_PAGE_BG      = "#FAFAFD"    # 极浅冷白底色
+# ── 现代 SaaS 仪表板配色 ──
+# 整体：浅灰白底、深灰导航、靛蓝主色
+COLOR_PAGE_BG      = "#F0F2F5"    # 页面底色：冷调浅灰
 COLOR_CARD         = "#FFFFFF"    # 卡片白色
-COLOR_CARD_BORDER  = "#E8E0F5"    # 淡紫细边框
-COLOR_ACCENT       = "#9368E9"    # 主色：淡薰衣草紫
-COLOR_ACCENT_DARK  = "#7A4FCF"    # 主色深
-COLOR_TEXT_TITLE   = "#1E1A2D"    # 一级标题
-COLOR_TEXT_BODY    = "#44405A"    # 二级正文
-COLOR_TEXT_AUX     = "#8A84A0"    # 三级辅助
-COLOR_SUCCESS      = "#6AAF8A"    # 成功
-COLOR_ERROR        = "#D46A6A"    # 错误
-COLOR_TAB_BG       = "#E6E0F0"    # 未选中标签底
-COLOR_TAB_SELECTED = "#1E1A2D"    # 选中标签（黑底）
-COLOR_INPUT_BG     = "#F0EEF6"    # 输入框底色
+COLOR_CARD_BORDER  = "#E4E7ED"    # 卡片边框：极浅灰
+COLOR_ACCENT       = "#4A6CF7"    # 主色：明亮靛蓝
+COLOR_ACCENT_DARK  = "#3651D4"    # 主色深：暗靛蓝
+COLOR_TEXT_TITLE   = "#1A2332"    # 一级标题：深蓝黑
+COLOR_TEXT_BODY    = "#4A5568"    # 二级正文：中灰
+COLOR_TEXT_AUX     = "#9098A7"    # 三级辅助：浅灰
+COLOR_SUCCESS      = "#3BB077"    # 成功绿
+COLOR_ERROR        = "#E54D4D"    # 错误红
+COLOR_TAB_BG       = "#E8ECF1"    # 未选中标签底
+COLOR_TAB_SELECTED = "#1A2332"    # 选中标签：深蓝黑
+COLOR_INPUT_BG     = "#F5F6FA"    # 输入框底色
 
 # ── 字体三级层级 ──
 _FONT_FAMILY = "Microsoft YaHei" if _sys_platform.system() == "Windows" else "PingFang SC" if _sys_platform.system() == "Darwin" else "Noto Sans CJK SC"
@@ -56,7 +57,7 @@ class FileBrainApp:
 
         # ── 主体容器 ──
         self.main_panel = ctk.CTkFrame(self.root, fg_color=COLOR_CARD,
-                                       corner_radius=24, border_width=0)
+                                       corner_radius=16, border_width=0)
         self.main_panel.pack(fill="both", expand=True, padx=20, pady=18)
 
         # 标题区
@@ -90,11 +91,11 @@ class FileBrainApp:
             fg_color="transparent",
             segmented_button_fg_color=COLOR_TAB_BG,
             segmented_button_selected_color=COLOR_TAB_SELECTED,
-            segmented_button_selected_hover_color="#3A3A44",
+            segmented_button_selected_hover_color="#2A3448",
             segmented_button_unselected_color=COLOR_TAB_BG,
             text_color=COLOR_TEXT_BODY,
             text_color_disabled=COLOR_TEXT_AUX,
-            corner_radius=16,
+            corner_radius=8,
         )
         self.tab.pack(fill="both", expand=True, padx=16, pady=(8, 12))
 
@@ -131,7 +132,7 @@ class FileBrainApp:
         f.grid_rowconfigure(5, weight=1)
 
         # 路径行
-        p = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=24,
+        p = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                          border_width=1, border_color=COLOR_CARD_BORDER)
         p.grid(row=0, column=0, sticky="ew", pady=3)
         p.grid_columnconfigure(1, weight=1)
@@ -141,12 +142,12 @@ class FileBrainApp:
         e = ctk.CTkEntry(p, textvariable=self.watch_dir,
                          font=FONT_BODY, height=34,
                          fg_color=COLOR_INPUT_BG, border_width=0,
-                         corner_radius=16)
+                         corner_radius=10)
         e.grid(row=0, column=1, sticky="ew", padx=4, pady=10)
         ctk.CTkButton(p, text="选择",
                       command=self._select_dir,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=34, width=70, corner_radius=16,
+                      height=34, width=70, corner_radius=10,
                       text_color="white", font=("", 12, "bold")
                       ).grid(row=0, column=2, padx=(4, 16), pady=10)
 
@@ -160,7 +161,7 @@ class FileBrainApp:
             height=40, width=150,
             command=self._toggle_monitor,
             fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-            corner_radius=20,
+            corner_radius=8,
         )
         self.btn_start.grid(row=0, column=0, sticky="w")
         ctk.CTkButton(
@@ -169,7 +170,7 @@ class FileBrainApp:
             fg_color="transparent",
             text_color=COLOR_ACCENT,
             hover_color=COLOR_TAB_BG,
-            height=38, width=130, corner_radius=16,
+            height=38, width=130, corner_radius=10,
             border_width=1, border_color=COLOR_ACCENT,
             font=FONT_BODY
         ).grid(row=0, column=1, padx=(8, 0))
@@ -190,7 +191,7 @@ class FileBrainApp:
         self.status_label.grid(row=0, column=3, sticky="e", padx=(12, 0))
 
         # 类型行
-        t = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=16,
+        t = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=10,
                          border_width=1, border_color=COLOR_CARD_BORDER)
         t.grid(row=2, column=0, sticky="ew", pady=3)
         ctk.CTkLabel(t, text="识别类型：",
@@ -208,7 +209,7 @@ class FileBrainApp:
                             ).pack(side="left", padx=6, pady=8)
 
         # 命名格式 + 隐私提示
-        n = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=16,
+        n = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=10,
                          border_width=1, border_color=COLOR_CARD_BORDER)
         n.grid(row=3, column=0, sticky="ew", pady=3)
         ctk.CTkLabel(n, text="📛 命名格式：",
@@ -239,7 +240,7 @@ class FileBrainApp:
         # 日志框（简化：单层卡片）
         self.log = ctk.CTkTextbox(
             f, font=FONT_MONO,
-            fg_color=COLOR_CARD, corner_radius=16,
+            fg_color=COLOR_CARD, corner_radius=10,
             border_width=1, border_color=COLOR_CARD_BORDER,
             height=130, text_color=COLOR_TEXT_BODY
         )
@@ -252,7 +253,7 @@ class FileBrainApp:
         f.grid_rowconfigure(2, weight=1)
 
         # 搜索栏 —— 卡片+阴影感
-        bar = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=24,
+        bar = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                            border_width=1, border_color=COLOR_CARD_BORDER)
         bar.grid(row=0, column=0, sticky="ew", pady=4)
         bar.grid_columnconfigure(1, weight=1)
@@ -261,13 +262,13 @@ class FileBrainApp:
                      ).grid(row=0, column=0, padx=(16, 4), pady=10)
         self.se = ctk.CTkEntry(bar, font=FONT_BODY, height=34,
                                fg_color=COLOR_INPUT_BG, border_width=0,
-                               corner_radius=16)
+                               corner_radius=10)
         self.se.grid(row=0, column=1, sticky="ew", padx=4, pady=10)
         self.se.bind("<Return>", lambda e: self._do_search())
         ctk.CTkButton(bar, text="搜索",
                       command=self._do_search,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=34, width=80, corner_radius=16,
+                      height=34, width=80, corner_radius=10,
                       text_color="white", font=("", 12, "bold")
                       ).grid(row=0, column=2, padx=(4, 16), pady=10)
 
@@ -277,7 +278,7 @@ class FileBrainApp:
         self.sc.grid(row=1, column=0, sticky="w", padx=4)
 
         # 结果区
-        rf = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=24,
+        rf = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                           border_width=1, border_color=COLOR_CARD_BORDER)
         rf.grid(row=2, column=0, sticky="nsew", pady=2)
         rf.grid_columnconfigure(0, weight=1)
@@ -299,7 +300,7 @@ class FileBrainApp:
                           fg_color="transparent",
                           text_color=COLOR_ACCENT,
                           hover_color=COLOR_TAB_BG,
-                          height=34, corner_radius=16,
+                          height=34, corner_radius=10,
                           border_width=1, border_color=COLOR_ACCENT,
                           font=FONT_BODY
                           ).grid(row=0, column=i, padx=(0, 6))
@@ -313,7 +314,7 @@ class FileBrainApp:
         f.grid_columnconfigure(0, weight=1)
         f.grid_rowconfigure(2, weight=1)
 
-        bar = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=24,
+        bar = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                            border_width=1, border_color=COLOR_CARD_BORDER)
         bar.grid(row=0, column=0, sticky="ew", pady=4)
         bar.grid_columnconfigure(1, weight=1)
@@ -325,17 +326,17 @@ class FileBrainApp:
         self.j_verify.grid(row=0, column=3, padx=(8, 16), pady=8)
         self.je = ctk.CTkEntry(bar, font=FONT_BODY, height=34,
                                fg_color=COLOR_INPUT_BG, border_width=0,
-                               corner_radius=16)
+                               corner_radius=10)
         self.je.grid(row=0, column=1, sticky="ew", padx=4, pady=10)
         self.je.bind("<Return>", lambda e: self._j_search())
         ctk.CTkButton(bar, text="搜索",
                       command=self._j_search,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=34, width=80, corner_radius=16,
+                      height=34, width=80, corner_radius=10,
                       text_color="white", font=("", 12, "bold")
                       ).grid(row=0, column=2, padx=(4, 16), pady=10)
 
-        jf = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=24,
+        jf = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                           border_width=1, border_color=COLOR_CARD_BORDER)
         jf.grid(row=2, column=0, sticky="nsew", pady=2)
         jf.grid_columnconfigure(0, weight=1)
@@ -353,7 +354,7 @@ class FileBrainApp:
                       fg_color="transparent",
                       text_color=COLOR_ACCENT,
                       hover_color=COLOR_TAB_BG,
-                      height=34, corner_radius=16,
+                      height=34, corner_radius=10,
                       border_width=1, border_color=COLOR_CARD_BORDER,
                       font=FONT_BODY
                       ).grid(row=0, column=0, sticky="w")
@@ -362,7 +363,7 @@ class FileBrainApp:
                       fg_color="transparent",
                       text_color=COLOR_ACCENT,
                       hover_color=COLOR_TAB_BG,
-                      height=34, corner_radius=16,
+                      height=34, corner_radius=10,
                       border_width=1, border_color=COLOR_CARD_BORDER,
                       font=FONT_BODY
                       ).grid(row=0, column=1, padx=(6, 0))
@@ -371,7 +372,7 @@ class FileBrainApp:
                       fg_color="transparent",
                       text_color=COLOR_ACCENT,
                       hover_color=COLOR_TAB_BG,
-                      height=34, corner_radius=16,
+                      height=34, corner_radius=10,
                       border_width=1, border_color=COLOR_CARD_BORDER,
                       font=FONT_BODY
                       ).grid(row=0, column=2, padx=(6, 0))
@@ -382,7 +383,7 @@ class FileBrainApp:
         f.grid_columnconfigure(0, weight=1)
 
         # 设置卡片
-        c1 = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=24,
+        c1 = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                           border_width=1, border_color=COLOR_CARD_BORDER)
         c1.grid(row=0, column=0, sticky="ew", pady=4, padx=0)
         ctk.CTkLabel(c1, text="📐 智能命名",
@@ -401,12 +402,12 @@ class FileBrainApp:
         # 命名格式在主页设置（自动整理页顶部）
 
         # 开源卡片 —— 质感背景
-        s = ctk.CTkFrame(f, fg_color=COLOR_TAB_BG, corner_radius=24,
+        s = ctk.CTkFrame(f, fg_color=COLOR_TAB_BG, corner_radius=12,
                          border_width=0)
         s.grid(row=1, column=0, sticky="ew", pady=(8, 4))
         # 底部阴影内边框
         inner_shadow = ctk.CTkFrame(s, fg_color=COLOR_CARD,
-                                    corner_radius=16, height=60)
+                                    corner_radius=10, height=60)
         inner_shadow.pack(fill="x", padx=2, pady=2)
         ctk.CTkLabel(inner_shadow, text="⬇ 免费开源 · 欢迎下载 ⬇",
                      font=FONT_BODY, text_color=COLOR_ACCENT
@@ -416,7 +417,7 @@ class FileBrainApp:
                      ).pack(pady=(0, 8))
 
         # 关于
-        c2 = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=24,
+        c2 = ctk.CTkFrame(f, fg_color=COLOR_CARD, corner_radius=12,
                           border_width=1, border_color=COLOR_CARD_BORDER)
         c2.grid(row=2, column=0, sticky="ew", pady=4)
         ctk.CTkLabel(c2, text="ℹ️ 关于",
@@ -497,7 +498,7 @@ class FileBrainApp:
         self.sc.configure(text=f"找到 {len(rs)} 个结果")
         for r in rs:
             c = ctk.CTkFrame(self.rl, fg_color=COLOR_INPUT_BG,
-                             corner_radius=16, height=38)
+                             corner_radius=10, height=38)
             c.pack(fill="x", pady=2)
             fn = ctk.CTkLabel(c, text=f"📄 {r.get('new_name', r.get('file_name',''))}",
                               font=FONT_BODY, anchor="w")
@@ -549,7 +550,7 @@ class FileBrainApp:
               if q else self.watcher.send_journal.get_recent(30))
         for r in rs:
             c = ctk.CTkFrame(self.jl, fg_color=COLOR_INPUT_BG,
-                             corner_radius=16, height=36)
+                             corner_radius=10, height=36)
             c.pack(fill="x", pady=2)
             ctk.CTkLabel(c, text=r.get("sent_at_str", ""),
                          font=FONT_MONO, width=110, anchor="w"
@@ -608,7 +609,7 @@ class FileBrainApp:
                 w.destroy()
             for c in cached:
                 row = ctk.CTkFrame(frame, fg_color=COLOR_CARD,
-                                   corner_radius=16, height=36)
+                                   corner_radius=10, height=36)
                 row.pack(fill="x", pady=2)
                 ctk.CTkLabel(row, text=f"{c['name']}",
                              font=FONT_BODY).pack(side="left", padx=10)
@@ -664,7 +665,7 @@ class FileBrainApp:
                 rebuild_list()
         ctk.CTkButton(add_frame, text="＋添加", command=add_contact,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=30, width=70, corner_radius=16,
+                      height=30, width=70, corner_radius=10,
                       text_color="white", font=("", 12, "bold")
                       ).pack(side="left", padx=3)
 
@@ -692,7 +693,7 @@ class FileBrainApp:
             for w in frame.winfo_children():
                 w.destroy()
             for i, m in enumerate(methods):
-                row = ctk.CTkFrame(frame, fg_color=COLOR_CARD, corner_radius=16, height=34)
+                row = ctk.CTkFrame(frame, fg_color=COLOR_CARD, corner_radius=10, height=34)
                 row.pack(fill="x", pady=2)
                 e = ctk.CTkEntry(row, font=FONT_BODY, height=30,
                                  fg_color=COLOR_INPUT_BG, border_width=0)
@@ -722,7 +723,7 @@ class FileBrainApp:
         new_e.bind("<Return>", lambda e: add_method())
         ctk.CTkButton(add_frame, text="＋添加", command=add_method,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=32, width=70, corner_radius=16,
+                      height=32, width=70, corner_radius=10,
                       text_color="white", font=("", 12, "bold")
                       ).pack(side="left")
 
@@ -732,7 +733,7 @@ class FileBrainApp:
             dialog.destroy()
         ctk.CTkButton(dialog, text="💾 保存", command=save,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=34, corner_radius=16,
+                      height=34, corner_radius=10,
                       text_color="white", font=("", 13, "bold")
                       ).pack(padx=16, pady=(6, 14), fill="x")
 
@@ -776,7 +777,7 @@ class SendDialog:
         self.r = ctk.CTkComboBox(self.top, values=contact_names,
                                  font=FONT_BODY, height=34,
                                  fg_color=COLOR_INPUT_BG, border_width=0,
-                                 corner_radius=16)
+                                 corner_radius=10)
         self.r.pack(padx=20, fill="x")
         # 新增联系人按钮
         ctk.CTkLabel(self.top, text="部门/备注：", font=FONT_BODY,
@@ -784,7 +785,7 @@ class SendDialog:
                      ).pack(padx=20, pady=(4, 2), anchor="w")
         self.r_dept = ctk.CTkEntry(self.top, font=FONT_BODY, height=30,
                                    fg_color=COLOR_INPUT_BG, border_width=0,
-                                   corner_radius=16)
+                                   corner_radius=10)
         self.r_dept.pack(padx=20, fill="x")
 
         ctk.CTkLabel(self.top, text="发送方式", font=FONT_BODY,
@@ -794,7 +795,7 @@ class SendDialog:
         self.m = ctk.CTkComboBox(self.top, values=methods,
                                  font=FONT_BODY, height=34,
                                  fg_color=COLOR_INPUT_BG, border_width=0,
-                                 corner_radius=16)
+                                 corner_radius=10)
         self.m.set(methods[0] if methods else "")
         self.m.pack(padx=20, fill="x")
 
@@ -803,13 +804,13 @@ class SendDialog:
         ctk.CTkButton(bf, text="取消", command=self.top.destroy,
                       fg_color="transparent",
                       text_color=COLOR_TEXT_AUX,
-                      height=36, corner_radius=16,
+                      height=36, corner_radius=10,
                       border_width=1, border_color=COLOR_CARD_BORDER,
                       font=FONT_BODY
                       ).pack(side="left")
         ctk.CTkButton(bf, text="✅ 保存", command=self._save,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=36, corner_radius=16,
+                      height=36, corner_radius=10,
                       text_color="white", font=("", 13, "bold")
                       ).pack(side="right")
 
