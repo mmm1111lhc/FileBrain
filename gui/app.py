@@ -598,7 +598,7 @@ class FileBrainApp:
                 self.j_verify.configure(text="")
 
     def _manage_contacts(self):
-        """打开联系人管理对话框"""
+        """打开联系人管理对话框（内存缓存 + 懒刷新）"""
         if not self.watcher:
             messagebox.showinfo("提示", "请先启动自动整理")
             return
@@ -616,11 +616,14 @@ class FileBrainApp:
                                        height=200)
         frame.pack(padx=16, fill="both", expand=True)
 
-        def refresh_contacts():
-            fresh = self.watcher.send_journal.get_contacts()
+        # 内存缓存，避免频繁读文件
+        cached = list(contacts)
+
+        def rebuild_list():
+            """重建列表（用缓存，不读文件）"""
             for w in frame.winfo_children():
                 w.destroy()
-            for c in fresh:
+            for c in cached:
                 row = ctk.CTkFrame(frame, fg_color=COLOR_CARD,
                                    corner_radius=8, height=36)
                 row.pack(fill="x", pady=2)
@@ -633,17 +636,20 @@ class FileBrainApp:
                 ctk.CTkLabel(row, text=c.get("method",""),
                              font=FONT_BODY, text_color=COLOR_MUTED
                              ).pack(side="left", padx=4)
-                def make_del(n):
-                    return lambda: (self.watcher.send_journal.delete_contact(n),
-                                    refresh_contacts())
+                def make_del(n, idx=cached.index(c)):
+                    return lambda: (
+                        self.watcher.send_journal.delete_contact(n),
+                        cached.pop(idx),
+                        rebuild_list()
+                    )
                 ctk.CTkButton(row, text="✕", width=28, height=28,
                               fg_color="transparent", text_color=COLOR_ERROR,
                               hover_color="#ffebee",
                               command=make_del(c["name"])
                               ).pack(side="right", padx=4)
-        refresh_contacts()
+        rebuild_list()
 
-        # 新增联系人行
+        # 新增联系人
         add_frame = ctk.CTkFrame(dialog, fg_color="transparent")
         add_frame.pack(padx=16, pady=(8, 14), fill="x")
         name_e = ctk.CTkEntry(add_frame, placeholder_text="姓名",
@@ -658,10 +664,11 @@ class FileBrainApp:
             n = name_e.get().strip()
             if n:
                 self.watcher.send_journal.add_contact(n, dept_e.get().strip())
-                contacts = self.watcher.send_journal.get_contacts()
-                refresh_contacts()
+                cached.append({"name": n, "department": dept_e.get().strip(),
+                               "method": "微信 WeChat"})
                 name_e.delete(0, "end")
                 dept_e.delete(0, "end")
+                rebuild_list()
         ctk.CTkButton(add_frame, text="＋添加", command=add_contact,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
                       height=32, width=80, corner_radius=6,
