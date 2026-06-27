@@ -653,27 +653,37 @@ class FileBrainApp:
         add_frame = ctk.CTkFrame(dialog, fg_color="transparent")
         add_frame.pack(padx=16, pady=(8, 14), fill="x")
         name_e = ctk.CTkEntry(add_frame, placeholder_text="姓名",
-                              font=FONT_BODY, height=32, width=120,
+                              font=FONT_BODY, height=30, width=100,
                               fg_color="#f0ede8", border_width=0)
-        name_e.pack(side="left", padx=(0, 4))
+        name_e.pack(side="left", padx=(0, 3))
         dept_e = ctk.CTkEntry(add_frame, placeholder_text="部门",
-                              font=FONT_BODY, height=32, width=120,
+                              font=FONT_BODY, height=30, width=100,
                               fg_color="#f0ede8", border_width=0)
-        dept_e.pack(side="left", padx=4)
+        dept_e.pack(side="left", padx=3)
+        method_var = ctk.StringVar(value="微信 WeChat")
+        method_menu = ctk.CTkOptionMenu(add_frame, values=self.watcher.send_journal.METHODS,
+                                         variable=method_var,
+                                         font=("", 12), height=30, width=100,
+                                         fg_color="#f0ede8",
+                                         button_color=COLOR_ACCENT,
+                                         button_hover_color=COLOR_ACCENT_DARK,
+                                         dropdown_font=("", 12))
+        method_menu.pack(side="left", padx=3)
         def add_contact():
             n = name_e.get().strip()
             if n:
-                self.watcher.send_journal.add_contact(n, dept_e.get().strip())
+                m = method_var.get()
+                self.watcher.send_journal.add_contact(n, dept_e.get().strip(), m)
                 cached.append({"name": n, "department": dept_e.get().strip(),
-                               "method": "微信 WeChat"})
+                               "method": m})
                 name_e.delete(0, "end")
                 dept_e.delete(0, "end")
                 rebuild_list()
         ctk.CTkButton(add_frame, text="＋添加", command=add_contact,
                       fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
-                      height=32, width=80, corner_radius=6,
+                      height=30, width=70, corner_radius=6,
                       text_color="white", font=("", 12, "bold")
-                      ).pack(side="left", padx=4)
+                      ).pack(side="left", padx=3)
 
     def _on_close(self):
         if self.watcher and self.watcher.is_running():
