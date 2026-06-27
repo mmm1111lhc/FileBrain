@@ -420,18 +420,14 @@ class FileBrainApp:
             if not os.path.isdir(wd):
                 messagebox.showerror("错误", f"目录不存在：{wd}")
                 return
-            # 先更新 UI 再启动
-            self.btn_start.configure(text="⏳ 启动中…", fg_color=COLOR_MUTED, state="disabled")
-            self.status_label.configure(text="⏳ 扫描中…", text_color=COLOR_MUTED)
-            self.root.update()
-            # 启动监控线程
             self.watcher = Watcher(wd, on_processed=self._on_proc)
             threading.Thread(target=self._start_w, daemon=True).start()
             self._log(f"正在启动: {wd}")
 
     def _start_w(self):
-        self.watcher.start()
+        """先更新UI状态再开始扫描（扫描在后台执行）"""
         self.root.after(0, self._started)
+        self.watcher.start()
 
     def _started(self):
         self.btn_start.configure(text="⏹  停止整理", fg_color=COLOR_ERROR, state="normal")
