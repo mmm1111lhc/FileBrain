@@ -392,6 +392,15 @@ class FileBrainApp:
                       border_width=1, border_color=COLOR_ACCENT,
                       font=FONT_BODY
                       ).grid(row=0, column=1, padx=(6, 0))
+        ctk.CTkButton(ab, text="📝 发送方式",
+                      command=self._manage_methods,
+                      fg_color="transparent",
+                      text_color=COLOR_ACCENT,
+                      hover_color=COLOR_TEXTURE_1,
+                      height=34, corner_radius=8,
+                      border_width=1, border_color=COLOR_ACCENT,
+                      font=FONT_BODY
+                      ).grid(row=0, column=2, padx=(6, 0))
 
     # ═══════════════ 设置 ═══════════════
 
@@ -685,6 +694,74 @@ class FileBrainApp:
                       text_color="white", font=("", 12, "bold")
                       ).pack(side="left", padx=3)
 
+    def _manage_methods(self):
+        """管理发送方式"""
+        if not self.watcher:
+            messagebox.showinfo("提示", "请先启动自动整理")
+            return
+        journal = self.watcher.send_journal
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("📝 管理发送方式")
+        dialog.geometry("350x300")
+        dialog.configure(fg_color=COLOR_GLASS_BG)
+
+        ctk.CTkLabel(dialog, text="📝 自定义发送方式",
+                     font=FONT_SECTION, text_color=COLOR_TEXT
+                     ).pack(padx=20, pady=(14, 8), anchor="w")
+
+        frame = ctk.CTkScrollableFrame(dialog, fg_color="transparent", height=150)
+        frame.pack(padx=16, fill="both", expand=True)
+
+        methods = list(journal.METHODS)
+
+        def rebuild():
+            for w in frame.winfo_children():
+                w.destroy()
+            for i, m in enumerate(methods):
+                row = ctk.CTkFrame(frame, fg_color=COLOR_CARD, corner_radius=8, height=34)
+                row.pack(fill="x", pady=2)
+                e = ctk.CTkEntry(row, font=FONT_BODY, height=30,
+                                 fg_color="#f0ede8", border_width=0)
+                e.insert(0, m)
+                e.pack(side="left", padx=8, fill="x", expand=True)
+                def make_del(idx=i):
+                    return lambda: (methods.pop(idx), rebuild())
+                ctk.CTkButton(row, text="✕", width=28, height=28,
+                              fg_color="transparent", text_color=COLOR_ERROR,
+                              hover_color="#ffebee", command=make_del(i)
+                              ).pack(side="right", padx=4)
+        rebuild()
+
+        # 新增
+        add_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        add_frame.pack(padx=16, pady=(6, 4), fill="x")
+        new_e = ctk.CTkEntry(add_frame, placeholder_text="输入新方式",
+                             font=FONT_BODY, height=32,
+                             fg_color="#f0ede8", border_width=0)
+        new_e.pack(side="left", padx=(0, 4), fill="x", expand=True)
+        def add_method():
+            v = new_e.get().strip()
+            if v and v not in methods:
+                methods.append(v)
+                new_e.delete(0, "end")
+                rebuild()
+        new_e.bind("<Return>", lambda e: add_method())
+        ctk.CTkButton(add_frame, text="＋添加", command=add_method,
+                      fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
+                      height=32, width=70, corner_radius=6,
+                      text_color="white", font=("", 12, "bold")
+                      ).pack(side="left")
+
+        # 保存按钮
+        def save():
+            journal.save_methods(methods)
+            dialog.destroy()
+        ctk.CTkButton(dialog, text="💾 保存", command=save,
+                      fg_color=COLOR_ACCENT, hover_color=COLOR_ACCENT_DARK,
+                      height=34, corner_radius=8,
+                      text_color="white", font=("", 13, "bold")
+                      ).pack(padx=16, pady=(6, 14), fill="x")
+
     def _on_close(self):
         if self.watcher and self.watcher.is_running():
             self.watcher.stop()
@@ -695,8 +772,9 @@ class FileBrainApp:
 
 
 class SendDialog:
-    METHODS = ["微信 WeChat", "邮件 Email", "AirDrop", "钉钉 DingTalk",
-               "企业微信 WeCom", "飞书 Feishu", "USB 拷贝", "其他"]
+    @property
+    def METHODS(self):
+        return self.j.METHODS if hasattr(self, 'j') else []
 
     def __init__(self, parent, path, journal, cb):
         self.j = journal
@@ -738,11 +816,12 @@ class SendDialog:
         ctk.CTkLabel(self.top, text="发送方式", font=FONT_BODY,
                      text_color=COLOR_TEXT
                      ).pack(padx=20, pady=(8, 2), anchor="w")
-        self.m = ctk.CTkComboBox(self.top, values=self.METHODS,
+        methods = self.METHODS
+        self.m = ctk.CTkComboBox(self.top, values=methods,
                                  font=FONT_BODY, height=34,
                                  fg_color="#f0ede8", border_width=0,
                                  corner_radius=6)
-        self.m.set("微信 WeChat")
+        self.m.set(methods[0] if methods else "")
         self.m.pack(padx=20, fill="x")
 
         bf = ctk.CTkFrame(self.top, fg_color="transparent")

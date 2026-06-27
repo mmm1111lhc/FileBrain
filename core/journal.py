@@ -16,8 +16,27 @@ JOURNAL_FILE = "send_journal.json"
 class SendJournal:
     """文件发送留痕记录"""
 
-    METHODS = ["微信 WeChat", "邮件 Email", "AirDrop", "钉钉 DingTalk",
-               "企业微信 WeCom", "飞书 Feishu", "USB 拷贝", "其他"]
+    METHODS_DEFAULT = ["微信 WeChat", "邮件 Email", "AirDrop", "钉钉 DingTalk",
+                       "企业微信 WeCom", "飞书 Feishu", "USB 拷贝", "其他"]
+    METHODS_FILE = "methods.json"
+
+    @property
+    def METHODS(self):
+        """可自定义的发送方式列表（从文件读取，支持用户修改）"""
+        f = self.state_dir / self.METHODS_FILE
+        if f.exists():
+            try:
+                with open(f, "r", encoding="utf-8") as fp:
+                    return json.load(fp)
+            except:
+                pass
+        return list(self.METHODS_DEFAULT)
+
+    def save_methods(self, methods: list):
+        """保存自定义的发送方式列表"""
+        self._ensure_dir()
+        with open(self.state_dir / self.METHODS_FILE, "w", encoding="utf-8") as fp:
+            json.dump(methods, fp, ensure_ascii=False, indent=2)
 
     def __init__(self, watch_dir: str):
         self.watch_dir = Path(watch_dir)
