@@ -5,6 +5,7 @@ import time
 import logging
 from pathlib import Path
 from threading import Event
+from collections import deque
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -39,6 +40,7 @@ class FileBrainHandler(FileSystemEventHandler):
         self.on_processed = on_processed  # 回调函数
         self.auto_mode = auto_mode        # True=自动处理, False=用户确认
         self._dedup = set()               # 去重
+        self._dedup_max = 500             # 去重上限，防内存泄漏
         self._observer = None
 
     def on_created(self, event):
@@ -63,9 +65,11 @@ class FileBrainHandler(FileSystemEventHandler):
         if ext not in SUPPORTED_EXTENSIONS:
             return
 
-        # 去重
+        # 去重 + 防内存泄漏
         if file_path in self._dedup:
             return
+        if len(self._dedup) > self._dedup_max:
+            self._dedup.clear()
         self._dedup.add(file_path)
 
         try:
@@ -221,30 +225,36 @@ class FileBrainHandler(FileSystemEventHandler):
             self.process_pending_file(item.file_path, version_label)
 
     def _get_category_dir(self, ext: str) -> str:
-        """根据文件扩展名返回归类文件夹名称"""
+        """根据文件扩展名返回归类文件夹名称（不用 emoji 保证跨平台兼容）"""
         pdf_exts = {".pdf"}
         word_exts = {".doc", ".docx"}
         excel_exts = {".xls", ".xlsx"}
         image_exts = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif"}
 
         if ext in pdf_exts:
-            return "📄 PDF"
+            return "PDF文档"
         elif ext in word_exts:
-            return "📝 Word"
+            return "Word文档"
         elif ext in excel_exts:
-            return "📊 Excel"
+            return "Excel表格"
         elif ext in image_exts:
-            return "🖼️ 图片"
+            return "图片"
         return ""
 
     def scan_existing(self):
-        """扫描目录中已有的文件"""
+        """扫描目录中已有的文件（含子目录）"""
         logger.info("扫描已有文件...")
         for ext in SUPPORTED_EXTENSIONS:
-            for f in self.watch_dir.glob(f"*{ext}"):
-                self._handle_file(str(f))
-            for f in self.watch_dir.glob(f"*{ext.upper()}"):
-                self._handle_file(str(f))
+            for f in self.watch_dir.rglob(f"*{ext}"):
+                if f.is_file():
+                    self._handle_file(str(f))
+        # 也处理大写扩展名
+        for ext in list(SUPPORTED_EXTENSIONS):
+            upper_ext = ext.upper()
+            if upper_ext != ext:
+                for f in self.watch_dir.rglob(f"*{upper_ext}"):
+                    if f.is_file():
+                        self._handle_file(str(f))
         logger.info("已有文件扫描完成")
 
 

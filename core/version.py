@@ -127,7 +127,6 @@ class VersionManager:
             "last_date": date_key,
         }
         self._save_state()
-        return f"v{major}.{minor}"
         self._save_state()
         return f"v{major}.{minor}"
 

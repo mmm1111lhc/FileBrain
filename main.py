@@ -90,11 +90,17 @@ def _cli_mode():
     watch_dir = input("请输入要监控的目录 (默认: ~/Desktop): ").strip()
     if not watch_dir:
         watch_dir = os.path.expanduser("~/Desktop")
+    watch_dir = os.path.abspath(watch_dir)
+
+    if not os.path.isdir(watch_dir):
+        print(f"❌ 目录不存在: {watch_dir}")
+        return
 
     watcher = Watcher(watch_dir)
     journal = SendJournal(watch_dir)
 
     print(f"监控目录: {watch_dir}")
+    logger.info(f"CLI 模式启动，监控目录: {watch_dir}")
     print("命令: start | stop | search <关键词> | send | status | exit")
 
     while True:
